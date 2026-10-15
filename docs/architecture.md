@@ -114,7 +114,8 @@ and does not pass them to pull requests from forks. The workflows refer to them 
 - Questions to the assistant, and the tool results it needs to answer them, are sent to the
   Claude API. Only aggregated `gold` data can be reached this way.
 - Scheduled workflows in a public repository are paused by GitHub after 60 days without
-  repository activity.
+  repository activity. [keepalive.yml](../.github/workflows/keepalive.yml) re-enables the
+  pipeline and demo workflows monthly to prevent this.
 
 ## To verify against the live services
 

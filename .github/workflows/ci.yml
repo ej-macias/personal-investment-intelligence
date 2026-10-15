@@ -8,9 +8,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # Runs the whole pipeline on synthetic data against a throwaway PostgreSQL.
     services:
       postgres:
@@ -34,8 +39,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+          cache-dependency-path: pyproject.toml
       - run: pip install -e ".[dbt,dev]"
       - run: ruff check .
+      - run: ruff format --check .
       - run: pytest
       - run: python -m invest_intel.synthetic.generate
       - run: dbt build

@@ -1,0 +1,21 @@
+name: Keep schedules alive
+
+# GitHub pauses scheduled workflows in a public repository after 60 days without activity.
+# Re-enabling them through the API resets that clock, so the daily pipeline cannot stop silently.
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - run: gh workflow enable pipeline.yml && gh workflow enable demo.yml
