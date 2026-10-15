@@ -1,0 +1,15 @@
+# One profile for every environment: the PG* variables decide which database is built.
+# On Neon use the direct (non-pooled) host here.
+invest_intel:
+  target: default
+  outputs:
+    default:
+      type: postgres
+      host: "{{ env_var('PGHOST', 'localhost') }}"
+      port: "{{ env_var('PGPORT', '5432') | as_number }}"
+      dbname: "{{ env_var('PGDATABASE', 'invest_intel') }}"
+      user: "{{ env_var('PGUSER', 'postgres') }}"
+      password: "{{ env_var('PGPASSWORD', '') }}"
+      sslmode: "{{ env_var('PGSSLMODE', 'prefer') }}"
+      schema: public
+      threads: 4

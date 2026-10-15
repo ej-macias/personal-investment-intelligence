@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # Runs the whole pipeline on synthetic data against a throwaway PostgreSQL.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: invest_intel
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: demo
+      PGHOST: localhost
+      PGDATABASE: invest_intel
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      DBT_PROFILES_DIR: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dbt,dev]"
+      - run: ruff check .
+      - run: pytest
+      - run: python -m invest_intel.synthetic.generate
+      - run: dbt build
+        working-directory: dbt

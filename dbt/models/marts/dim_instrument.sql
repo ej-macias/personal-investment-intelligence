@@ -1,0 +1,36 @@
+-- Every instrument held or used as a benchmark. Instruments seen in Indexa that have not
+-- been described in Airtable yet still appear, flagged as Unclassified.
+with described as (
+    select
+        isin,
+        instrument_name,
+        eodhd_symbol,
+        asset_class,
+        region,
+        currency,
+        is_benchmark
+    from {{ ref('stg_airtable__instruments') }}
+),
+
+undescribed as (
+    select
+        isin,
+        max(instrument_name) as instrument_name
+    from {{ ref('stg_indexa__transactions') }}
+    where isin not in (select isin from described)
+    group by isin
+)
+
+select * from described
+
+union all
+
+select
+    isin,
+    instrument_name,
+    null as eodhd_symbol,
+    'Unclassified' as asset_class,
+    'Unclassified' as region,
+    'EUR' as currency,
+    false as is_benchmark
+from undescribed

@@ -1,0 +1,51 @@
+name: Daily pipeline
+
+# Ingest from the three APIs, then rebuild silver and gold in the private database.
+#
+# No credential is stored in this file. Each `secrets.NAME` is read at run time from the
+# encrypted secrets of the `private` GitHub environment (see docs/architecture.md, Security).
+# Logs of a public repository are public, so the jobs print row counts only.
+on:
+  schedule:
+    - cron: "0 5 * * *" # 05:00 UTC, after EODHD has published the previous close
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency: pipeline
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment: private
+    env:
+      APP_ENV: prod
+      PGHOST: ${{ secrets.PGHOST }}
+      PGDATABASE: ${{ secrets.PGDATABASE }}
+      PGUSER: ${{ secrets.PGUSER }}
+      PGPASSWORD: ${{ secrets.PGPASSWORD }}
+      PGSSLMODE: require
+      INDEXA_API_TOKEN: ${{ secrets.INDEXA_API_TOKEN }}
+      AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+      EODHD_API_TOKEN: ${{ secrets.EODHD_API_TOKEN }}
+      DBT_PROFILES_DIR: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dbt]"
+      - name: Ingest
+        id: ingest
+        continue-on-error: true # still rebuild from whichever sources succeeded
+        run: python -m invest_intel.ingestion.run
+      - name: dbt build
+        # --quiet keeps failing-test detail out of the public log
+        run: dbt --quiet build
+        working-directory: dbt
+      - name: Fail if ingestion failed
+        if: steps.ingest.outcome == 'failure'
+        run: exit 1

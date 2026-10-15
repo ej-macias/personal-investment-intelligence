@@ -1,0 +1,27 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Bronze layer. Append-only JSONB payloads written by invest_intel.ingestion (or by the
+      synthetic generator in the demo environment). All tables share the columns
+      id, run_id, loaded_at, entity, record_key, payload, payload_hash.
+    schema: raw
+    loaded_at_field: loaded_at
+    tables:
+      - name: indexa_portfolio
+        description: One portfolio snapshot per account per day; positions are nested in the payload.
+        freshness:
+          warn_after: {count: 3, period: day}
+      - name: indexa_instrument_transactions
+        description: Fund subscriptions and redemptions per Indexa account.
+      - name: indexa_cash_transactions
+        description: Deposits, withdrawals and fees per Indexa account. Not modelled yet.
+      - name: airtable_instruments
+        description: Instrument metadata and the ISIN to EODHD symbol mapping, maintained by hand.
+      - name: airtable_transactions
+        description: Manually tracked buys and sells outside Indexa.
+      - name: eodhd_prices
+        description: End-of-day prices, one record per symbol and date.
+        freshness:
+          warn_after: {count: 5, period: day}

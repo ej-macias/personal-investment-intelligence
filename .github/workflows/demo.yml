@@ -1,0 +1,33 @@
+name: Refresh demo
+
+# Regenerates the synthetic portfolio in the demo database so the public demo stays current.
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment: demo # holds the demo database credentials and nothing else
+    env:
+      APP_ENV: demo
+      PGHOST: ${{ secrets.PGHOST }}
+      PGDATABASE: ${{ secrets.PGDATABASE }}
+      PGUSER: ${{ secrets.PGUSER }}
+      PGPASSWORD: ${{ secrets.PGPASSWORD }}
+      PGSSLMODE: require
+      DBT_PROFILES_DIR: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dbt]"
+      - run: python -m invest_intel.synthetic.generate
+      - run: dbt build
+        working-directory: dbt

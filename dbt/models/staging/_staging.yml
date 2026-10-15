@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: stg_indexa__transactions
+    description: Indexa fund transactions, typed and deduplicated.
+    columns:
+      - name: transaction_id
+        data_tests: [not_null]
+      - name: isin
+        data_tests: [not_null]
+      - name: trade_date
+        data_tests: [not_null]
+
+  - name: stg_indexa__positions
+    description: Positions reported by Indexa per snapshot. Used for prices and reconciliation.
+
+  - name: stg_airtable__instruments
+    description: Instrument metadata and EODHD symbol mapping.
+    columns:
+      - name: isin
+        data_tests: [unique, not_null]
+
+  - name: stg_airtable__transactions
+    description: Manually tracked transactions, typed and deduplicated.
+    columns:
+      - name: transaction_id
+        data_tests: [unique, not_null]
+      - name: isin
+        data_tests: [not_null]
+      - name: quantity
+        data_tests: [not_null]
+
+  - name: stg_eodhd__prices
+    description: End-of-day prices per EODHD symbol.
+    columns:
+      - name: close_price
+        data_tests: [not_null]

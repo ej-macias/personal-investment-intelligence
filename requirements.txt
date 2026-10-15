@@ -1,0 +1,2 @@
+# Used by Streamlit Community Cloud; installs the package and its runtime dependencies.
+.

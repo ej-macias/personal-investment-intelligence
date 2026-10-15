@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: dim_instrument
+    description: One row per instrument (fund, ETF, share or benchmark index).
+    columns:
+      - name: isin
+        data_tests: [unique, not_null]
+
+  - name: fct_transactions
+    description: One row per buy or sell, from Indexa and from Airtable.
+    columns:
+      - name: transaction_key
+        data_tests: [unique, not_null]
+      - name: transaction_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["buy", "sell"]
+      - name: isin
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_instrument')
+                field: isin
+              config:
+                severity: warn
+      - name: quantity
+        data_tests: [not_null]
+
+  - name: fct_positions_daily
+    description: Position, net invested and market value per account, instrument and day.
+    columns:
+      - name: position_key
+        data_tests: [unique, not_null]
+
+  - name: portfolio_performance
+    description: Daily portfolio value, net invested, gain and time-weighted return.
+    columns:
+      - name: date_day
+        data_tests: [unique, not_null]
+      - name: market_value
+        data_tests: [not_null]
+
+  - name: investment_returns
+    description: Current cost, value and gain per account and instrument.
+
+  - name: asset_allocation
+    description: Current holdings per instrument with portfolio weight.
+    columns:
+      - name: isin
+        data_tests: [unique, not_null]
+
+  - name: benchmark_comparison
+    description: Portfolio vs benchmark cumulative return per day.

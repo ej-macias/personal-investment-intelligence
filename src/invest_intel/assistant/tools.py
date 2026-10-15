@@ -1,0 +1,134 @@
+"""Tools the AI assistant may call.
+
+The model never sees SQL or a database connection. It can only pick one of these tools and
+supply arguments, which are validated here before reaching the fixed queries in
+invest_intel.analytics.queries. To give the assistant a new ability, add a query there and
+register it below.
+"""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Callable
+from datetime import date
+from typing import Any
+
+from invest_intel.analytics import queries
+
+_DATE = {"type": "string", "description": "ISO date, YYYY-MM-DD."}
+_FREQUENCY = {
+    "type": "string",
+    "enum": list(queries.FREQUENCIES),
+    "description": "Use monthly unless the question needs day-level detail.",
+}
+
+
+def _date(value: Any) -> date | None:
+    return date.fromisoformat(value) if value else None
+
+
+def _get_portfolio_summary(_: dict[str, Any]) -> Any:
+    return queries.portfolio_summary()
+
+
+def _get_portfolio_performance(args: dict[str, Any]) -> Any:
+    return queries.portfolio_performance(
+        start_date=_date(args.get("start_date")),
+        end_date=_date(args.get("end_date")),
+        frequency=args.get("frequency", "monthly"),
+    )
+
+
+def _get_asset_allocation(args: dict[str, Any]) -> Any:
+    return queries.asset_allocation(args.get("dimension", "asset_class"))
+
+
+def _get_investment_returns(_: dict[str, Any]) -> Any:
+    return queries.investment_returns()
+
+
+def _compare_with_benchmark(args: dict[str, Any]) -> Any:
+    return queries.compare_with_benchmark(
+        start_date=_date(args.get("start_date")), frequency=args.get("frequency", "monthly")
+    )
+
+
+def _get_transactions(args: dict[str, Any]) -> Any:
+    return queries.transactions(isin=args.get("isin"), limit=args.get("limit", 50))
+
+
+def _tool(name: str, description: str, properties: dict[str, Any] | None = None) -> dict[str, Any]:
+    return {
+        "name": name,
+        "description": description,
+        "input_schema": {
+            "type": "object",
+            "properties": properties or {},
+            "additionalProperties": False,
+        },
+    }
+
+
+TOOLS: list[dict[str, Any]] = [
+    _tool(
+        "get_portfolio_summary",
+        "Latest total market value, net invested amount, total gain and cumulative "
+        "time-weighted return. Start here for any question about how the portfolio stands today.",
+    ),
+    _tool(
+        "get_portfolio_performance",
+        "Time series of market value, net invested, total gain and time-weighted return. "
+        "Use for questions about performance over a period or how the portfolio evolved.",
+        {"start_date": _DATE, "end_date": _DATE, "frequency": _FREQUENCY},
+    ),
+    _tool(
+        "get_asset_allocation",
+        "Current market value and portfolio weight grouped by a dimension. "
+        "Use for diversification, concentration and exposure questions.",
+        {"dimension": {"type": "string", "enum": sorted(queries.ALLOCATION_DIMENSIONS)}},
+    ),
+    _tool(
+        "get_investment_returns",
+        "One row per holding with quantity, net invested, market value, gain and return. "
+        "Use to find best and worst performers or to look up an instrument's ISIN.",
+    ),
+    _tool(
+        "compare_with_benchmark",
+        "Portfolio and benchmark cumulative returns, rebased to zero at start_date, and the "
+        "difference between them. Use for questions about beating or lagging the market.",
+        {"start_date": _DATE, "frequency": _FREQUENCY},
+    ),
+    _tool(
+        "get_transactions",
+        "Most recent buys and sells, optionally for one instrument.",
+        {
+            "isin": {
+                "type": "string",
+                "description": "Instrument ISIN from get_investment_returns.",
+            },
+            "limit": {"type": "integer", "description": "Maximum rows, default 50."},
+        },
+    ),
+]
+
+HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
+    "get_portfolio_summary": _get_portfolio_summary,
+    "get_portfolio_performance": _get_portfolio_performance,
+    "get_asset_allocation": _get_asset_allocation,
+    "get_investment_returns": _get_investment_returns,
+    "compare_with_benchmark": _compare_with_benchmark,
+    "get_transactions": _get_transactions,
+}
+
+
+def run_tool(name: str, args: dict[str, Any]) -> tuple[str, bool]:
+    """Execute a tool and return (JSON result or error message, is_error)."""
+    handler = HANDLERS.get(name)
+    if handler is None:
+        return f"Unknown tool: {name}", True
+    try:
+        return json.dumps(handler(args or {}), default=str), False
+    except (ValueError, TypeError) as exc:
+        return f"Invalid arguments: {exc}", True
+    except Exception as exc:  # noqa: BLE001 - report the failure to the model, not the details
+        return f"The tool failed ({type(exc).__name__}).", True

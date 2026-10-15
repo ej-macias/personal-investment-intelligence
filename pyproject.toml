@@ -1,0 +1,35 @@
+[project]
+name = "personal-investment-intelligence"
+version = "0.1.0"
+description = "Personal investment analytics: ingestion, dbt models, Streamlit dashboard and an LLM assistant."
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "psycopg[binary]>=3.2",
+    "pandas>=2.2",
+    "streamlit>=1.42",
+    "Authlib>=1.3.2",
+    "anthropic",
+]
+
+[project.optional-dependencies]
+dbt = ["dbt-core>=1.10.5", "dbt-postgres>=1.9"]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/invest_intel"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "app", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
