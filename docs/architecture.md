@@ -14,7 +14,7 @@ all of it and changes or adds the following.
 | Prices | EODHD first, then the price in Indexa's portfolio snapshot, then forward fill | Indexa funds get a daily price without spending EODHD calls |
 | EODHD quota | Each run requests only symbols that are behind, stalest first, only the missing dates, capped by `EODHD_DAILY_CALL_BUDGET` | One call per symbol per day at most; a backlog clears over several days instead of failing |
 | Instrument metadata | The Airtable `instruments` table maps ISIN to EODHD symbol, asset class and region, and marks the benchmark | One hand-maintained place; holdings are not listed in the public repository |
-| Demo isolation | A separate database fed by a synthetic generator that writes the same raw payload shapes | The whole pipeline is exercised identically; no real row can reach the demo |
+| Demo isolation | A separate database fed by a generator that writes a fictional portfolio in the same raw payload shapes, valued at real EODHD closes of public ETFs | The whole pipeline is exercised identically on real market moves; Indexa and Airtable are never called, so no personal row can reach the demo |
 | Assistant access | Tools call fixed queries through a read-only role limited to `gold` | The model cannot read raw payloads or run arbitrary SQL, even if a prompt asks it to |
 | One query layer | Dashboards and assistant tools call the same functions | A number in a chart and the same number in an answer cannot disagree |
 | Login | Streamlit's built-in `st.login()` with Google, plus an email allowlist that fails closed | No password handling in the app; works well on a phone |
@@ -79,7 +79,7 @@ No secret is stored in the repository. Each one lives in exactly one of these pl
 |---|---|---|
 | `.env` on your machine (git-ignored) | Whatever you need locally | Local runs |
 | GitHub environment `private` | Indexa, Airtable and EODHD tokens; pipeline database role | [pipeline.yml](../.github/workflows/pipeline.yml) |
-| GitHub environment `demo` | Demo database credentials only | [demo.yml](../.github/workflows/demo.yml) |
+| GitHub environment `demo` | Demo database credentials and the EODHD key (shared with `private`; it reads public prices only, so a leak costs quota, not data) | [demo.yml](../.github/workflows/demo.yml) |
 | Streamlit app secrets (private app) | Read-only database role, Anthropic key, Google OAuth client, allowlist | The private app |
 | Streamlit app secrets (demo app) | Demo read-only role, Anthropic key | The public demo |
 
@@ -89,7 +89,9 @@ and does not pass them to pull requests from forks. The workflows refer to them 
 ### Safeguards in the code
 
 - `APP_ENV=demo` makes the ingestion refuse to run, and the synthetic generator (which
-  truncates the raw tables) refuses to run anywhere else.
+  truncates the raw tables) refuses to run anywhere else. With `--real-prices` it calls EODHD
+  for the demo's public symbols only, and fetches before truncating, so a failed call leaves
+  the previous demo data in place.
 - Ingestion logs row counts only. HTTP errors are reduced to a status code because the EODHD
   token travels in the URL.
 - The app and the assistant use a role that can only `select` from `gold` ([sql/roles.sql](../sql/roles.sql)).

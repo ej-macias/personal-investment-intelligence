@@ -1,9 +1,10 @@
 name: Refresh demo
 
-# Regenerates the synthetic portfolio in the demo database so the public demo stays current.
+# Regenerates the fictional demo portfolio, valued at real EODHD closes, in the demo database.
+# Runs on Sunday so its 8 EODHD calls never compete with the daily pipeline, which shares the key.
 on:
   schedule:
-    - cron: "0 4 * * 1"
+    - cron: "0 4 * * 0"
   workflow_dispatch:
 
 permissions:
@@ -13,7 +14,7 @@ jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: demo # holds the demo database credentials and nothing else
+    environment: demo # demo database credentials and the EODHD key, nothing personal
     env:
       APP_ENV: demo
       PGHOST: ${{ secrets.PGHOST }}
@@ -21,6 +22,8 @@ jobs:
       PGUSER: ${{ secrets.PGUSER }}
       PGPASSWORD: ${{ secrets.PGPASSWORD }}
       PGSSLMODE: require
+      EODHD_API_TOKEN: ${{ secrets.EODHD_API_TOKEN }}
+      EODHD_HISTORY_DAYS: "365"
       DBT_PROFILES_DIR: .
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +33,6 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
       - run: pip install -e ".[dbt]"
-      - run: python -m invest_intel.synthetic.generate
+      - run: python -m invest_intel.synthetic.generate --real-prices
       - run: dbt build
         working-directory: dbt
