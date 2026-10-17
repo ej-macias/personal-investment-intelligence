@@ -24,14 +24,13 @@ st.dataframe(
 names = returns.drop_duplicates("isin").set_index("isin")["instrument_name"].fillna("").to_dict()
 isin = st.selectbox("Instrument", list(names), format_func=lambda i: names[i] or i)
 
+history = data.position_history(isin)
+
 st.subheader("Value vs. money invested")
-st.line_chart(
-    data.position_history(isin),
-    x="date_day",
-    y=["market_value", "net_invested"],
-    x_label="",
-    y_label="EUR",
-)
+st.line_chart(history, x="date_day", y=["market_value", "net_invested"], x_label="", y_label="EUR")
+
+st.subheader("Price")
+st.line_chart(history, x="date_day", y="close_price", x_label="", y_label="EUR")
 
 st.subheader("Transactions")
 st.dataframe(
