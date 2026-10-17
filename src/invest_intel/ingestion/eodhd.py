@@ -79,10 +79,15 @@ def fetch(conn: psycopg.Connection, today: date | None = None) -> dict[str, list
         budget=int(config.env("EODHD_DAILY_CALL_BUDGET", "18")),
         history_days=int(config.env("EODHD_HISTORY_DAYS", "365")),
     )
+    return {"eodhd_prices": fetch_history(plan, today)}
+
+
+def fetch_history(requests: list[tuple[str, date]], today: date) -> list[Row]:
+    """Fetch each (symbol, from_date) up to today: one API call per symbol."""
     rows: list[Row] = []
     # The token travels as a query parameter, so never log request URLs or raw httpx errors.
     params = {"api_token": config.require("EODHD_API_TOKEN"), "fmt": "json"}
     with httpx.Client(base_url=BASE_URL, params=params, timeout=30) as client:
-        for symbol, start in plan:
+        for symbol, start in requests:
             rows.extend(_fetch_symbol(client, symbol, start, today))
-    return {"eodhd_prices": rows}
+    return rows

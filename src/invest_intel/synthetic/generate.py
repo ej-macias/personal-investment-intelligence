@@ -1,32 +1,40 @@
-"""Synthetic portfolio for the public demo: `python -m invest_intel.synthetic.generate`.
+"""Fictional portfolio for the public demo: `python -m invest_intel.synthetic.generate`.
 
-Writes fictional instruments, prices and transactions into the same raw tables, in the same
-payload shapes, as the real ingestion. Everything downstream (dbt, app, assistant) therefore
-runs unchanged on demo data. Refuses to run unless APP_ENV=demo.
+Writes made-up holdings and transactions into the same raw tables, in the same payload shapes,
+as the real ingestion. Everything downstream (dbt, app, assistant) therefore runs unchanged on
+demo data. Refuses to run unless APP_ENV=demo.
+
+Prices are random paths by default, which keeps CI and the tests offline. With --real-prices
+the portfolio is valued at real EODHD closes of public ETFs instead. Only EODHD is called,
+never Indexa or Airtable, so nothing personal can reach the demo.
 """
 
 from __future__ import annotations
 
+import argparse
 import logging
 import random
 import sys
+from collections import defaultdict
 from datetime import date, timedelta
 from typing import Any
 
 from invest_intel import config, db
-from invest_intel.ingestion import bronze
+from invest_intel.ingestion import bronze, eodhd
 from invest_intel.ingestion.bronze import Row
+from invest_intel.ingestion.run import _describe
 
 INDEXA_ACCOUNT = "DEMO0001"
 BROKER_ACCOUNT = "Demo Broker"
 MONTHLY_CONTRIBUTION = 800.0
 
-# isin, name, symbol, asset class, region, source, target weight, annual drift, annual volatility
+# isin, name, EODHD symbol, asset class, region, source, target weight,
+# then annual drift and volatility for the random price paths
 INSTRUMENTS = [
     (
-        "XX0000000001",
-        "Global Equity Index Fund",
-        "GLEQ.DEMO",
+        "IE00B4L5Y983",
+        "iShares Core MSCI World UCITS ETF",
+        "EUNL.XETRA",
         "Equity",
         "Global",
         "indexa",
@@ -35,9 +43,9 @@ INSTRUMENTS = [
         0.15,
     ),
     (
-        "XX0000000002",
-        "Emerging Markets Index Fund",
-        "EMEQ.DEMO",
+        "IE00BKM4GZ66",
+        "iShares Core MSCI EM IMI UCITS ETF",
+        "IS3N.XETRA",
         "Equity",
         "Emerging",
         "indexa",
@@ -46,9 +54,9 @@ INSTRUMENTS = [
         0.20,
     ),
     (
-        "XX0000000003",
-        "Euro Government Bond Index Fund",
-        "EUGB.DEMO",
+        "IE00B4WXJJ64",
+        "iShares Core Euro Government Bond UCITS ETF",
+        "EUNH.XETRA",
         "Fixed income",
         "Europe",
         "indexa",
@@ -57,9 +65,9 @@ INSTRUMENTS = [
         0.05,
     ),
     (
-        "XX0000000004",
-        "Global Small Cap Index Fund",
-        "GLSC.DEMO",
+        "IE00BF4RFH31",
+        "iShares MSCI World Small Cap UCITS ETF",
+        "IUSN.XETRA",
         "Equity",
         "Global",
         "indexa",
@@ -68,9 +76,9 @@ INSTRUMENTS = [
         0.18,
     ),
     (
-        "XX0000000005",
-        "Technology Sector ETF",
-        "TECH.DEMO",
+        "IE00B3WJKG14",
+        "iShares S&P 500 Information Technology Sector UCITS ETF",
+        "QDVE.XETRA",
         "Equity",
         "North America",
         "airtable",
@@ -79,9 +87,9 @@ INSTRUMENTS = [
         0.25,
     ),
     (
-        "XX0000000006",
-        "Physical Gold ETC",
-        "GOLD.DEMO",
+        "DE000A0S9GB0",
+        "Xetra-Gold",
+        "4GLD.XETRA",
         "Commodities",
         "Global",
         "airtable",
@@ -90,9 +98,9 @@ INSTRUMENTS = [
         0.14,
     ),
     (
-        "XX0000000007",
-        "Acme Robotics plc",
-        "ACME.DEMO",
+        "DE0007164600",
+        "SAP SE",
+        "SAP.XETRA",
         "Equity",
         "Europe",
         "airtable",
@@ -102,14 +110,15 @@ INSTRUMENTS = [
     ),
 ]
 BENCHMARK = (
-    "XX0000000099",
-    "Global Equity Benchmark Index",
-    "BENCH.DEMO",
+    "IE00B6R52259",
+    "iShares MSCI ACWI UCITS ETF",
+    "IUSQ.XETRA",
     "Equity",
     "Global",
     0.075,
     0.15,
 )
+SYMBOLS = [i[2] for i in INSTRUMENTS] + [BENCHMARK[2]]
 
 
 def _business_days(start: date, end: date) -> list[date]:
@@ -133,6 +142,11 @@ def _price_path(
     return path
 
 
+def _price_on(path: dict[date, float], day: date) -> float:
+    """Last close on or before the day, so exchange holidays reuse the previous quote."""
+    return path[max(d for d in path if d <= day)]
+
+
 def _eodhd_rows(symbol: str, path: dict[date, float]) -> list[Row]:
     return [
         (
@@ -152,19 +166,36 @@ def _eodhd_rows(symbol: str, path: dict[date, float]) -> list[Row]:
     ]
 
 
-def generate(today: date, seed: int = 42, years: int = 3) -> dict[str, list[Row]]:
+def generate(
+    today: date,
+    seed: int = 42,
+    years: int = 3,
+    prices: dict[str, list[dict[str, Any]]] | None = None,
+) -> dict[str, list[Row]]:
+    """Build every raw table. `prices` holds EODHD payloads by symbol; None means random paths."""
     rng = random.Random(seed)
-    days = _business_days(today - timedelta(days=365 * years), today)
     tables: dict[str, list[Row]] = {name: [] for name in bronze.RAW_TABLES}
 
-    paths: dict[str, dict[date, float]] = {}
     catalogue = [(i[0], i[1], i[2], i[3], i[4], False, i[7], i[8]) for i in INSTRUMENTS]
     catalogue.append((*BENCHMARK[:5], True, BENCHMARK[5], BENCHMARK[6]))
-    for n, (isin, name, symbol, asset_class, region, is_benchmark, drift, vol) in enumerate(
-        catalogue
-    ):
-        paths[isin] = _price_path(rng, days, drift, vol)
-        tables["eodhd_prices"].extend(_eodhd_rows(symbol, paths[isin]))
+
+    paths: dict[str, dict[date, float]] = {}
+    if prices is None:
+        days = _business_days(today - timedelta(days=365 * years), today)
+        for isin, _, symbol, _, _, _, drift, vol in catalogue:
+            paths[isin] = _price_path(rng, days, drift, vol)
+            tables["eodhd_prices"].extend(_eodhd_rows(symbol, paths[isin]))
+    else:
+        for isin, _, symbol, *_ in catalogue:
+            quotes = [p for p in prices.get(symbol, []) if p.get("close") is not None]
+            if not quotes:
+                raise ValueError(f"No EODHD prices for {symbol}")
+            paths[isin] = {date.fromisoformat(p["date"]): float(p["close"]) for p in quotes}
+            tables["eodhd_prices"].extend((symbol, p["date"], p) for p in quotes)
+        # Start once every instrument has a quote, so each trade has a price.
+        days = _business_days(max(min(path) for path in paths.values()), today)
+
+    for n, (isin, name, symbol, asset_class, region, is_benchmark, _, _) in enumerate(catalogue):
         fields: dict[str, Any] = {
             "isin": isin,
             "name": name,
@@ -188,7 +219,7 @@ def generate(today: date, seed: int = 42, years: int = 3) -> dict[str, list[Row]
         nonlocal sequence
         sequence += 1
         isin, name, source = instrument[0], instrument[1], instrument[5]
-        price = paths[isin][day]
+        price = _price_on(paths[isin], day)
         holdings[isin] += quantity if kind == "buy" else -quantity
         if source == "indexa":
             reference = f"T{sequence:06d}"
@@ -220,22 +251,26 @@ def generate(today: date, seed: int = 42, years: int = 3) -> dict[str, list[Row]
     for day in contribution_days:
         for instrument in INSTRUMENTS:
             amount = MONTHLY_CONTRIBUTION * instrument[6] * rng.uniform(0.9, 1.1)
-            trade(day, instrument, "buy", round(amount / paths[instrument[0]][day], 4))
+            price = _price_on(paths[instrument[0]], day)
+            trade(day, instrument, "buy", round(amount / price, 4))
         if day == sell_day:
-            acme = INSTRUMENTS[-1]
-            trade(day, acme, "sell", round(holdings[acme[0]] / 2, 4))
+            stock = INSTRUMENTS[-1]
+            trade(day, stock, "sell", round(holdings[stock[0]] / 2, 4))
 
     last_day = days[-1]
-    positions = [
-        {
-            "instrument": {"identifier": i[0], "name": i[1]},
-            "titles": round(holdings[i[0]], 4),
-            "price": paths[i[0]][last_day],
-            "amount": round(holdings[i[0]] * paths[i[0]][last_day], 2),
-        }
-        for i in INSTRUMENTS
-        if i[5] == "indexa"
-    ]
+    positions = []
+    for i in INSTRUMENTS:
+        if i[5] != "indexa":
+            continue
+        price = _price_on(paths[i[0]], last_day)
+        positions.append(
+            {
+                "instrument": {"identifier": i[0], "name": i[1]},
+                "titles": round(holdings[i[0]], 4),
+                "price": price,
+                "amount": round(holdings[i[0]] * price, 2),
+            }
+        )
     snapshot = {
         "portfolio": {
             "date": last_day.isoformat(),
@@ -247,15 +282,43 @@ def generate(today: date, seed: int = 42, years: int = 3) -> dict[str, list[Row]
     return tables
 
 
-def main() -> int:
+def fetch_prices(today: date) -> dict[str, list[dict[str, Any]]]:
+    """One EODHD call per demo symbol, covering EODHD_HISTORY_DAYS."""
+    start = today - timedelta(days=int(config.env("EODHD_HISTORY_DAYS", "365")))
+    prices: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for symbol, _, payload in eodhd.fetch_history([(s, start) for s in SYMBOLS], today):
+        prices[symbol].append(payload)
+    return prices
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--real-prices", action="store_true", help="value the portfolio at real EODHD closes"
+    )
+    args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     log = logging.getLogger("synthetic")
     if not config.is_demo():
         log.error(
             "Refusing to run: this replaces the raw tables. Set APP_ENV=demo on a demo database."
         )
         return 2
-    tables = generate(date.today())
+
+    today = date.today()
+    # Fetch before touching the database: if EODHD fails, last run's demo data stays in place.
+    try:
+        prices = fetch_prices(today) if args.real_prices else None
+    except Exception as exc:  # noqa: BLE001 - the token is in the URL, so log the type only
+        log.error("EODHD prices unavailable: %s", _describe(exc))
+        return 1
+    try:
+        tables = generate(today, prices=prices)
+    except ValueError as exc:  # a symbol without quotes; symbols are public
+        log.error("%s", exc)
+        return 1
+
     with db.connect() as conn:
         bronze.ensure_tables(conn)
         bronze.truncate_all(conn)

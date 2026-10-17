@@ -14,7 +14,7 @@ def _allowed_emails() -> set[str]:
 def require_login() -> None:
     """Stop the script unless the viewer may see the data. Fails closed."""
     if config.is_demo():
-        st.sidebar.info("Demo: all figures are synthetic.")
+        st.sidebar.info("Demo: a fictional portfolio valued at real market prices.")
         return
 
     if not st.user.is_logged_in:

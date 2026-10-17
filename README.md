@@ -4,7 +4,7 @@ A personal investment analytics app. It consolidates investments held at Indexa 
 elsewhere, models portfolio performance with dbt, and answers questions in plain language
 through an AI assistant that works from a fixed set of analytical tools.
 
-The public demo runs on synthetic data. The real portfolio lives in a separate, private
+The public demo runs on a fictional portfolio valued at real market prices. The real portfolio lives in a separate, private
 database behind a login.
 
 ## Architecture
@@ -69,7 +69,7 @@ tests and the linter.
 
 | | Data | Database | App access |
 |---|---|---|---|
-| `demo` | Synthetic only; the ingestion refuses to run | Its own Neon project | Open |
+| `demo` | Fictional portfolio at real EODHD prices; Indexa and Airtable are never called | Its own Neon project | Open |
 | `prod` | Real accounts, via the daily pipeline | Private Neon project | Google login, email allowlist |
 | `dev` | Either | Local PostgreSQL | Google login, or use `demo` |
 
