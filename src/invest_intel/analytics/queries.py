@@ -139,7 +139,8 @@ def position_history(isin: str) -> Rows:
         """
         select date_day, sum(quantity)::float8 as quantity,
                sum(market_value)::float8 as market_value,
-               sum(net_invested)::float8 as net_invested
+               sum(net_invested)::float8 as net_invested,
+               max(close_price)::float8 as close_price
         from gold.fct_positions_daily
         where isin = %(isin)s
         group by 1
