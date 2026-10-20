@@ -15,6 +15,7 @@ import httpx
 
 from invest_intel import config
 from invest_intel.ingestion.bronze import Row, payload_hash
+from invest_intel.ingestion.errors import SourceHTTPError
 
 BASE_URL = "https://api.indexacapital.com"
 
@@ -27,9 +28,11 @@ def _client() -> httpx.Client:
     )
 
 
-def _get(client: httpx.Client, path: str) -> Any:
-    response = client.get(path)
-    response.raise_for_status()
+def _get(client: httpx.Client, template: str, **params: str) -> Any:
+    """GET template.format(**params); errors name the template, never the account number."""
+    response = client.get(template.format(**params))
+    if response.is_error:
+        raise SourceHTTPError(response.status_code, template)
     return response.json()
 
 
@@ -49,14 +52,17 @@ def fetch(today: date | None = None) -> dict[str, list[Row]]:
     with _client() as client:
         accounts = [a["account_number"] for a in _get(client, "/users/me")["accounts"]]
         for account in accounts:
-            portfolio = _get(client, f"/accounts/{account}/portfolio")
+            portfolio = _get(client, "/accounts/{account}/portfolio", account=account)
             tables["indexa_portfolio"].append((account, snapshot_date, portfolio))
             tables["indexa_instrument_transactions"].extend(
                 _transaction_rows(
-                    account, _get(client, f"/accounts/{account}/instrument-transactions")
+                    account,
+                    _get(client, "/accounts/{account}/instrument-transactions", account=account),
                 )
             )
             tables["indexa_cash_transactions"].extend(
-                _transaction_rows(account, _get(client, f"/accounts/{account}/cash-transactions"))
+                _transaction_rows(
+                    account, _get(client, "/accounts/{account}/cash-transactions", account=account)
+                )
             )
     return tables
