@@ -69,6 +69,66 @@ Candidates for later: `fct_cash_flows` (deposits, withdrawals, fees), `portfolio
   first real price arrives, the difference shows up as that day's return.
 - Prices use the unadjusted close. Dividends paid in cash are not modelled yet.
 
+## Airtable base
+
+One Airtable base holds the two tables the pipeline cannot get from an API. You create them by
+hand; the pipeline only reads them. Both must exist, even if `transactions` is empty, because
+they are fetched together and a missing table fails the whole Airtable step.
+
+Field names are read exactly as written: lowercase, in English (`isin`, not `ISIN`). A field
+with any other name is silently ignored. The table names may differ from `instruments` and
+`transactions` if you set the `AIRTABLE_INSTRUMENTS_TABLE` and `AIRTABLE_TRANSACTIONS_TABLE`
+variables of the `private` GitHub environment (names or `tbl…` IDs).
+
+### `instruments`: what each instrument is
+
+One row per instrument you hold anywhere, **Indexa funds included**, plus the benchmark. Indexa
+reports what you own but not how to classify it or where to find its daily price; this table
+adds both. An Indexa fund without a row still appears, as "Unclassified" and without an EODHD
+price. Rows without an `isin` are ignored.
+
+| Field | Airtable type | Required | Meaning | Example |
+|---|---|---|---|---|
+| `isin` | Single line text (primary field) | Yes | The instrument's ISIN, the key that links it to its transactions and Indexa positions. Instruments without an ISIN, such as crypto, use a stable made-up ID. | `IE00B4L5Y983` |
+| `name` | Single line text | Yes | Display name in the app and the assistant's answers. | `iShares Core MSCI World UCITS ETF` |
+| `eodhd_symbol` | Single line text | For a daily price | EODHD ticker with its exchange suffix. The pipeline fetches a daily close for every symbol listed here. Leave it empty only if no price is needed. | `EUNL.XETRA` |
+| `asset_class` | Single select | Recommended | Groups the allocation chart. Empty shows as "Unclassified". | `Equity` |
+| `region` | Single select | Recommended | Groups the allocation by region. Empty shows as "Unclassified". | `Global` |
+| `currency` | Single line text | No | Quote currency. Only EUR is supported for now, which is also the default. | `EUR` |
+| `is_benchmark` | Checkbox | No | Tick on the one index you compare the portfolio against. It is priced but never counted as a holding. | ☐ |
+
+Example rows, an ETF held at a broker and a cryptocurrency:
+
+| isin | name | eodhd_symbol | asset_class | region | currency | is_benchmark |
+|---|---|---|---|---|---|---|
+| `IE00B4L5Y983` | iShares Core MSCI World UCITS ETF | `EUNL.XETRA` | Equity | Global | EUR | ☐ |
+| `CRYPTO-BTC` | Bitcoin | `BTC-EUR.CC` | Crypto | Global | EUR | ☐ |
+
+### `transactions`: buys and sells outside Indexa
+
+One row per trade at an account the pipeline cannot read through an API: another broker, an
+exchange, a crypto wallet. **Do not enter Indexa trades here**; they come from Indexa's API and
+would be counted twice. Every `isin` used here needs a row in `instruments`.
+
+| Field | Airtable type | Required | Meaning | Example |
+|---|---|---|---|---|
+| `date` | Date | Yes | Trade date. Positions and returns change from this day. | `2026-03-02` |
+| `isin` | Single line text | Yes | The instrument traded, matching an `isin` in `instruments`. | `IE00B4L5Y983` |
+| `type` | Single select | Yes | `buy` or `sell` (case does not matter). Other values are kept but do not change the position. | `buy` |
+| `quantity` | Number (decimals) | Yes | Units traded, always positive; `type` gives the direction. | `10` |
+| `price` | Number (decimals) | Yes | Price per unit in EUR, before fees. | `98.40` |
+| `fees` | Number (decimals) | No | Commission paid on the trade, 0 if empty. Added to the cost of a buy and taken off the proceeds of a sale. | `1.50` |
+| `account` | Single line text | Recommended | Where the trade happened, to tell accounts apart. "Manual" if empty. | `Trade Republic` |
+
+Example row, a buy of the ETF above:
+
+| date | isin | type | quantity | price | fees | account |
+|---|---|---|---|---|---|---|
+| 2026-03-02 | `IE00B4L5Y983` | buy | 10 | 98.40 | 1.50 | Trade Republic |
+
+The pipeline records this buy as €985.50 invested (10 × 98.40 + 1.50). From 2 March on, the
+position is 10 units valued at each day's `EUNL.XETRA` close.
+
 ## Security
 
 ### Where secrets live
@@ -92,8 +152,9 @@ and does not pass them to pull requests from forks. The workflows refer to them 
   truncates the raw tables) refuses to run anywhere else. With `--real-prices` it calls EODHD
   for the demo's public symbols only, and fetches before truncating, so a failed call leaves
   the previous demo data in place.
-- Ingestion logs row counts only. HTTP errors are reduced to a status code because the EODHD
-  token travels in the URL.
+- Ingestion logs row counts only. HTTP errors are reduced to a status code, plus the Airtable
+  table name or the Indexa endpoint template, never a URL (the EODHD token travels in it) or an
+  account number.
 - The app and the assistant use a role that can only `select` from `gold` ([sql/roles.sql](../sql/roles.sql)).
 - Tool arguments are validated; the one dynamic column name comes from a whitelist.
 - The assistant has a per-session question limit, since the demo is open to anyone.
@@ -105,11 +166,14 @@ and does not pass them to pull requests from forks. The workflows refer to them 
 2. **GitHub**: create the environments `private` and `demo`, add their secrets, and restrict
    `private` to the `main` branch (Settings → Environments → Deployment branches). Enable
    secret scanning push protection.
-3. **Tokens**: give each the least access that works: an Airtable token with read scope on
-   the one base, and a pipeline database role separate from the app's.
-4. **Google**: create an OAuth client and put it in the private app's `[auth]` secrets
+3. **Airtable**: create a base with the `instruments` and `transactions` tables described in
+   [Airtable base](#airtable-base). Put its `app…` ID in the `AIRTABLE_BASE_ID` secret.
+4. **Tokens**: give each the least access that works: an Airtable personal access token with
+   only the `data.records:read` scope on that one base, and a pipeline database role separate
+   from the app's.
+5. **Google**: create an OAuth client and put it in the private app's `[auth]` secrets
    ([.streamlit/secrets.toml.example](../.streamlit/secrets.toml.example)).
-5. **Anthropic**: set a monthly spend limit on the API key used by the demo.
+6. **Anthropic**: set a monthly spend limit on the API key used by the demo.
 
 ### Things to know
 

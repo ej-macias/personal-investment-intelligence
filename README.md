@@ -82,7 +82,7 @@ This is the project skeleton. The pipeline, models, dashboards and assistant too
 end on synthetic data. Still to do:
 
 - [ ] Confirm the Indexa payload fields against a live account (`stg_indexa__*.sql`)
-- [ ] Create the Neon projects, GitHub environments and Streamlit deployments
+- [ ] Create the Airtable base ([fields](docs/architecture.md#airtable-base)), Neon projects, GitHub environments and Streamlit deployments
 - [ ] Model cash transactions (deposits, fees) and money-weighted return
 - [ ] Multi-currency support (everything is assumed to be EUR)
 - [ ] Evaluation set for the assistant's answers
