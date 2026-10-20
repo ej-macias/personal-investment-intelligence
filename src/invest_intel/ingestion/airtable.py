@@ -13,6 +13,7 @@ import httpx
 
 from invest_intel import config
 from invest_intel.ingestion.bronze import Row
+from invest_intel.ingestion.errors import SourceHTTPError
 
 BASE_URL = "https://api.airtable.com/v0"
 
@@ -22,7 +23,8 @@ def _records(client: httpx.Client, base_id: str, table: str) -> list[dict[str, A
     offset: str | None = None
     while True:
         response = client.get(f"/{base_id}/{table}", params={"offset": offset} if offset else None)
-        response.raise_for_status()
+        if response.is_error:
+            raise SourceHTTPError(response.status_code, f"table {table!r}")
         body = response.json()
         records.extend(body["records"])
         offset = body.get("offset")

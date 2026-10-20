@@ -16,7 +16,7 @@ def require(name: str) -> str:
     value = env(name)
     if value is None:
         raise RuntimeError(f"Missing required environment variable: {name}")
-    return value
+    return value.strip()  # pasted secrets often carry a trailing newline
 
 
 def app_env() -> str:

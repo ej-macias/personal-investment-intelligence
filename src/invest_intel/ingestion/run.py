@@ -15,6 +15,7 @@ import httpx
 
 from invest_intel import config, db
 from invest_intel.ingestion import airtable, bronze, eodhd, indexa
+from invest_intel.ingestion.errors import SourceHTTPError
 
 log = logging.getLogger("ingestion")
 
@@ -23,6 +24,8 @@ SOURCES = ("airtable", "indexa", "eodhd")
 
 
 def _describe(exc: Exception) -> str:
+    if isinstance(exc, SourceHTTPError):
+        return str(exc)
     if isinstance(exc, httpx.HTTPStatusError):
         return f"HTTP {exc.response.status_code}"
     return type(exc).__name__

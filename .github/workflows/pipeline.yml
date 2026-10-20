@@ -30,6 +30,9 @@ jobs:
       INDEXA_API_TOKEN: ${{ secrets.INDEXA_API_TOKEN }}
       AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
       AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+      # Table names or tbl… IDs, as environment variables (not secrets) of `private`.
+      AIRTABLE_INSTRUMENTS_TABLE: ${{ vars.AIRTABLE_INSTRUMENTS_TABLE || 'instruments' }}
+      AIRTABLE_TRANSACTIONS_TABLE: ${{ vars.AIRTABLE_TRANSACTIONS_TABLE || 'transactions' }}
       EODHD_API_TOKEN: ${{ secrets.EODHD_API_TOKEN }}
       DBT_PROFILES_DIR: .
     steps:
