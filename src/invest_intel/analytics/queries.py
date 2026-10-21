@@ -17,6 +17,8 @@ Rows = list[dict[str, Any]]
 ALLOCATION_DIMENSIONS = {
     "asset_class": "asset_class",
     "region": "region",
+    "instrument_type": "instrument_type",
+    "liquidity": "liquidity",
     "instrument": "instrument_name",
 }
 FREQUENCIES = ("daily", "monthly")
@@ -60,7 +62,7 @@ def portfolio_performance(
 
 
 def asset_allocation(dimension: str = "asset_class") -> Rows:
-    """Current market value and weight grouped by asset_class, region or instrument."""
+    """Current market value and weight grouped by one of ALLOCATION_DIMENSIONS."""
     if dimension not in ALLOCATION_DIMENSIONS:
         raise ValueError(f"dimension must be one of {sorted(ALLOCATION_DIMENSIONS)}")
     column = ALLOCATION_DIMENSIONS[dimension]
@@ -79,7 +81,7 @@ def investment_returns() -> Rows:
     """Per-instrument quantity, cost, value and gain as of the latest day."""
     return db.query(
         """
-        select isin, instrument_name, asset_class, account_id, quantity::float8,
+        select isin, instrument_name, asset_class, instrument_type, account_id, quantity::float8,
                net_invested::float8, market_value::float8, total_gain::float8,
                return_pct::float8
         from gold.investment_returns

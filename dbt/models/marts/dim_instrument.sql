@@ -7,6 +7,8 @@ with described as (
         eodhd_symbol,
         asset_class,
         region,
+        instrument_type,
+        liquidity,
         currency,
         is_benchmark
     from {{ ref('stg_airtable__instruments') }}
@@ -31,6 +33,8 @@ select
     null as eodhd_symbol,
     'Unclassified' as asset_class,
     'Unclassified' as region,
+    'Unclassified' as instrument_type,
+    'Unclassified' as liquidity,
     'EUR' as currency,
     false as is_benchmark
 from undescribed

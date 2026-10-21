@@ -119,6 +119,8 @@ BENCHMARK = (
     0.15,
 )
 SYMBOLS = [i[2] for i in INSTRUMENTS] + [BENCHMARK[2]]
+# Every demo instrument trades on an exchange, so all are Immediate; anything not listed is an ETF.
+INSTRUMENT_TYPES = {"4GLD.XETRA": "ETC", "SAP.XETRA": "Share"}
 
 
 def _business_days(start: date, end: date) -> list[date]:
@@ -202,6 +204,8 @@ def generate(
             "eodhd_symbol": symbol,
             "asset_class": asset_class,
             "region": region,
+            "instrument_type": INSTRUMENT_TYPES.get(symbol, "ETF"),
+            "liquidity": "Immediate",
             "currency": "EUR",
         }
         if is_benchmark:  # Airtable omits unchecked checkboxes

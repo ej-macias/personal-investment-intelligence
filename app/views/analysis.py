@@ -31,7 +31,11 @@ else:
 
 st.subheader("Allocation")
 dimension = (
-    st.segmented_control("Group by", ["asset_class", "region", "instrument"], default="region")
+    st.segmented_control(
+        "Group by",
+        ["asset_class", "region", "instrument_type", "liquidity", "instrument"],
+        default="region",
+    )
     or "region"
 )
 allocation = data.allocation(dimension)

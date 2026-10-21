@@ -84,7 +84,8 @@ TOOLS: list[dict[str, Any]] = [
     _tool(
         "get_asset_allocation",
         "Current market value and portfolio weight grouped by a dimension. "
-        "Use for diversification, concentration and exposure questions.",
+        "Use for diversification, concentration and exposure questions, and for liquidity: "
+        "how much could be turned into cash quickly.",
         {"dimension": {"type": "string", "enum": sorted(queries.ALLOCATION_DIMENSIONS)}},
     ),
     _tool(
