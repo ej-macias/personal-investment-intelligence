@@ -22,6 +22,8 @@ select
     i.instrument_name,
     i.asset_class,
     i.region,
+    i.instrument_type,
+    i.liquidity,
     b.first_trade_date,
     l.quantity,
     l.net_invested,

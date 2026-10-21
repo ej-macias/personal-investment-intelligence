@@ -1,7 +1,8 @@
 """Airtable: manually tracked instruments (metadata + EODHD symbol mapping) and transactions.
 
 Expected fields (see docs/architecture.md):
-  instruments:  isin, name, eodhd_symbol, asset_class, region, currency, is_benchmark
+  instruments:  isin, name, eodhd_symbol, asset_class, region, instrument_type, liquidity,
+                currency, is_benchmark
   transactions: date, isin, type (buy/sell), quantity, price, fees, account
 """
 

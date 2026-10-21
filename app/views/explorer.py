@@ -10,11 +10,21 @@ if returns.empty:
     st.stop()
 
 st.dataframe(
-    returns[["instrument_name", "asset_class", "market_value", "total_gain", "return_pct"]],
+    returns[
+        [
+            "instrument_name",
+            "asset_class",
+            "instrument_type",
+            "market_value",
+            "total_gain",
+            "return_pct",
+        ]
+    ],
     hide_index=True,
     column_config={
         "instrument_name": "Instrument",
         "asset_class": "Asset class",
+        "instrument_type": "Type",
         "market_value": st.column_config.NumberColumn("Value", format="€%.0f"),
         "total_gain": st.column_config.NumberColumn("Gain", format="€%.0f"),
         "return_pct": st.column_config.NumberColumn("Return", format="percent"),
