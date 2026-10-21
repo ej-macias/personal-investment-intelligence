@@ -1,8 +1,15 @@
 """Entry point: `streamlit run app/streamlit_app.py`."""
 
-import streamlit as st
+import sys
+from pathlib import Path
 
-from auth import require_login
+# Import invest_intel from this checkout, not from the copy pip installed at build time:
+# Streamlit Cloud pulls new commits but only reinstalls when requirements.txt changes.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+import streamlit as st  # noqa: E402
+
+from auth import require_login  # noqa: E402
 
 st.set_page_config(page_title="Investment Intelligence", page_icon="📈", layout="centered")
 
