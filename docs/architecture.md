@@ -55,7 +55,7 @@ Columns in every table: `id, run_id, loaded_at, entity, record_key, payload, pay
 | `fct_positions_daily` | account, instrument, day | What did I hold and what was it worth? |
 | `portfolio_performance` | day | Value, net invested, gain, time-weighted return |
 | `investment_returns` | account, instrument | Cost, value and gain per holding today |
-| `asset_allocation` | instrument | Weights by asset class, region or instrument |
+| `asset_allocation` | instrument and platform | Weights by asset class, region, instrument type, liquidity, platform or instrument |
 | `benchmark_comparison` | benchmark, day | Am I ahead of or behind the market? |
 
 Candidates for later: `fct_cash_flows` (deposits, withdrawals, fees), `portfolio_performance_monthly`,
@@ -141,7 +141,7 @@ would be counted twice. Every `isin` used here needs a row in `instruments`.
 | `quantity` | Number (decimals) | Yes | Units traded, always positive; `type` gives the direction. | `10` |
 | `price` | Number (decimals) | Yes | Price per unit in EUR, before fees. | `98.40` |
 | `fees` | Number (decimals) | No | Commission paid on the trade, 0 if empty. Added to the cost of a buy and taken off the proceeds of a sale. | `1.50` |
-| `account` | Single line text | Recommended | Where the trade happened, to tell accounts apart. "Manual" if empty. | `Trade Republic` |
+| `account` | Single line text | Recommended | Where the trade happened, to tell accounts apart. It is the platform shown in the app and in the allocation by platform (Indexa holdings show as "Indexa Capital"). Use the same spelling every time. "Manual" if empty. | `Trade Republic` |
 
 Example row, a buy of the ETF above:
 

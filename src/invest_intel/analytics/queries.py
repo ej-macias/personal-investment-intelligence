@@ -19,6 +19,7 @@ ALLOCATION_DIMENSIONS = {
     "region": "region",
     "instrument_type": "instrument_type",
     "liquidity": "liquidity",
+    "platform": "platform",
     "instrument": "instrument_name",
 }
 FREQUENCIES = ("daily", "monthly")
@@ -81,8 +82,8 @@ def investment_returns() -> Rows:
     """Per-instrument quantity, cost, value and gain as of the latest day."""
     return db.query(
         """
-        select isin, instrument_name, asset_class, instrument_type, account_id, quantity::float8,
-               net_invested::float8, market_value::float8, total_gain::float8,
+        select isin, instrument_name, asset_class, instrument_type, platform, account_id,
+               quantity::float8, net_invested::float8, market_value::float8, total_gain::float8,
                return_pct::float8
         from gold.investment_returns
         order by market_value desc
