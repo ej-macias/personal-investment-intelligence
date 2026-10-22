@@ -46,10 +46,14 @@ models:
     description: Current cost, value and gain per account and instrument.
 
   - name: asset_allocation
-    description: Current holdings per instrument with portfolio weight.
+    description: Current holdings per instrument and platform with portfolio weight.
     columns:
-      - name: isin
+      - name: allocation_key
         data_tests: [unique, not_null]
+      - name: isin
+        data_tests: [not_null]
+      - name: platform
+        data_tests: [not_null]
 
   - name: benchmark_comparison
     description: Portfolio vs benchmark cumulative return per day.

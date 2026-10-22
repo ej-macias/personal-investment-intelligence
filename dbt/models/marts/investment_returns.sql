@@ -11,13 +11,17 @@ bought as (
         account_id,
         isin,
         sum(amount) filter (where transaction_type = 'buy') as total_bought,
-        min(trade_date) as first_trade_date
+        min(trade_date) as first_trade_date,
+        max(source) as source
     from {{ ref('fct_transactions') }}
     group by account_id, isin
 )
 
 select
     l.account_id,
+    -- The platform holding it: every Indexa account is one platform; manually tracked
+    -- accounts are named in Airtable (e.g. a broker).
+    case when b.source = 'indexa' then 'Indexa Capital' else l.account_id end as platform,
     l.isin,
     i.instrument_name,
     i.asset_class,
