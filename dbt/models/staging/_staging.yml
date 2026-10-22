@@ -5,7 +5,7 @@ version: 2
 
 models:
   - name: stg_indexa__transactions
-    description: Indexa fund buys and sells, typed and deduplicated.
+    description: Indexa fund and pension plan buys and sells, typed and deduplicated. Executed (closed) operations only.
     columns:
       - name: account_id
         description: Indexa account number.
@@ -31,6 +31,12 @@ models:
               config: {severity: warn}
       - name: operation_type
         description: Indexa's own label for the operation, as received.
+      - name: status
+        description: Indexa's status for the operation; always closed here.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [closed]
       - name: quantity
         description: Units traded, always positive.
         data_tests: [not_null]

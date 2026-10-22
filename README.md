@@ -103,7 +103,7 @@ The public demo runs end to end: weekly refresh at real prices, dbt models and t
 dashboards and the assistant. The private deployment, on real accounts, is being set up. Still
 to do:
 
-- [ ] Confirm the Indexa payload fields against a live account (`stg_indexa__*.sql`)
+- [x] Indexa payload fields confirmed against a live account
 - [x] Demo: Neon project, GitHub environment and Streamlit deployment
 - [ ] Private: Airtable base ([fields](docs/architecture.md#airtable-base)), Neon project, GitHub environment and Streamlit deployment
 - [ ] Model cash transactions (deposits, withdrawals, fees) from Indexa

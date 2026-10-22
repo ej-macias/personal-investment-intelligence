@@ -1,4 +1,4 @@
--- TODO(verify): field names against a real Indexa payload. Operation labels: confirmed.
+-- Indexa fund and pension plan operations. Field names and labels checked against a live account.
 with source as {{ latest_records(source('raw', 'indexa_instrument_transactions')) }}
 
 select
@@ -24,5 +24,8 @@ select
     abs((payload ->> 'titles')::numeric) as quantity,
     (payload ->> 'price')::numeric as price,
     abs((payload ->> 'amount')::numeric) as amount,
+    payload ->> 'status' as status,
     loaded_at
 from source
+-- Only executed operations. A pending one is stored again once it closes, and counted then.
+where payload ->> 'status' = 'closed'

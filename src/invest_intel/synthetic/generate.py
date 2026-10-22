@@ -236,6 +236,7 @@ def generate(
                 "date": day.isoformat(),
                 "instrument": {"identifier": isin, "name": name},
                 "operation_type": INDEXA_OPERATIONS[kind],
+                "status": "closed",
                 "titles": quantity,
                 "price": price,
                 "amount": round(quantity * price, 2),

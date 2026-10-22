@@ -279,8 +279,9 @@ and does not pass them to pull requests from forks. The workflows refer to them 
 
 ## To verify against the live services
 
-- Indexa endpoint paths and payload field names ([indexa.py](../src/invest_intel/ingestion/indexa.py),
-  `stg_indexa__*.sql`), including the values of `operation_type`.
+- Indexa sell labels: only buys have been seen so far ("suscripción fondos inversión",
+  "aportacion a plan de pensiones"). Redemptions and pension payouts are assumed to contain
+  "reembolso" or "prestación"; an unrecognised label stops the build at the buy/sell test.
 - EODHD free-tier limits and which of your funds it covers; set `EODHD_DAILY_CALL_BUDGET` and
   `EODHD_HISTORY_DAYS` accordingly.
 - Current free-tier terms for Neon and Streamlit Community Cloud.

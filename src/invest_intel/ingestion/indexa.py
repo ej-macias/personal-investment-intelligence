@@ -1,8 +1,7 @@
 """Indexa Capital: accounts, portfolio snapshot (positions) and transactions.
 
-TODO(verify): endpoint paths and payload field names follow the public API docs
-(https://indexacapital.com/en/api-rest-v1) but have not been run against a live account.
-Check one real payload per endpoint, then adjust dbt/models/staging/stg_indexa__*.sql.
+Endpoints follow the public API docs (https://indexacapital.com/en/api-rest-v1); payloads were
+checked against a live account. Each transactions endpoint returns the full history as one list.
 """
 
 from __future__ import annotations

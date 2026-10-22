@@ -1,5 +1,5 @@
 -- One row per account, snapshot date and instrument, unnested from the portfolio payload.
--- TODO(verify): payload structure against a real Indexa portfolio response.
+-- Structure checked against a live Indexa portfolio response.
 with snapshots as {{ latest_records(source('raw', 'indexa_portfolio')) }},
 
 positions as (
