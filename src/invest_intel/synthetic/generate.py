@@ -109,14 +109,16 @@ INSTRUMENTS = [
         0.35,
     ),
 ]
+# A fixed stock/bond mix close to the demo's ~75% growth assets, so the comparison reflects
+# the choice of funds rather than the amount of risk taken (see docs/architecture.md).
 BENCHMARK = (
-    "IE00B6R52259",
-    "iShares MSCI ACWI UCITS ETF",
-    "IUSQ.XETRA",
-    "Equity",
+    "IE00BMVB5R75",
+    "Vanguard LifeStrategy 80% Equity UCITS ETF",
+    "V80A.XETRA",
+    "Mixed",
     "Global",
-    0.075,
-    0.15,
+    0.065,
+    0.12,
 )
 SYMBOLS = [i[2] for i in INSTRUMENTS] + [BENCHMARK[2]]
 # Every demo instrument trades on an exchange, so all are Immediate; anything not listed is an ETF.

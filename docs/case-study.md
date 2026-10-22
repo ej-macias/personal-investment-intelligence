@@ -23,10 +23,20 @@ above all, my financial data are never stored in the repository.
 
 ## How it works
 
-Every day a scheduled job collects my positions and trades from Indexa Capital, the
-investments I track by hand in Airtable, and daily prices from EODHD. dbt turns that raw data
-into clean, tested tables, and a Streamlit app shows dashboards and an AI assistant on top of
-them. The details are in [architecture.md](architecture.md).
+Every day a scheduled job collects data from three sources:
+
+- **Indexa Capital's API**: my index funds and pension plan, including the automatic monthly
+  contributions, so those never need entering by hand.
+- **Airtable**: one of the platforms I invest through has no API, so I record those
+  investments by hand. I was already keeping a manual tracking sheet in Airtable, so it became
+  the source for them, and for how every instrument is classified. When I make a new
+  investment there, I add it myself. That's fine: I invest for the long term, so it doesn't
+  happen often.
+- **EODHD's API**: daily market prices. The investments I record by hand only say what I
+  bought and when, so I need real prices to know what they are worth today.
+
+dbt turns that raw data into clean, tested tables, and a Streamlit app shows dashboards and an
+AI assistant on top of them. The details are in [architecture.md](architecture.md).
 
 ## Decisions I made
 
@@ -42,12 +52,16 @@ it takes about the same risk as your portfolio. Mine, like most people's, mixes 
 bonds and cash. Next to a 100% stock index it would trail far behind in good years and look
 great in a crash, because of how much risk I chose to take rather than because my choices
 were good or bad. A fixed stock/bond mix that matches my target is a fair yardstick, and since
-it's fixed, I don't have to update it whenever my weights move.
+it's fixed, I don't have to update it whenever my weights move. The demo follows the same
+rule: its benchmark is a fund with a fixed 80% stocks and 20% bonds, close to the demo
+portfolio's own mix.
 
-**Classifying by type and liquidity, not only by asset class.** Knowing how much I have in
-stocks or bonds isn't enough. I also want to see what each investment is (an ETF, an index
-fund, a pension plan, private shares) and how quickly I could turn it into cash if I needed
-money urgently. Some of it can be sold within days; my pension plan and startup shares can't.
+**Looking at my money by platform, type and liquidity, not only by asset class.** Knowing how
+much I have in stocks or bonds isn't enough. I also want to see how much sits on each
+platform, so I don't keep too much of my money in one place; what each investment is (an ETF,
+an index fund, a pension plan, private shares); and how quickly I could turn it into cash if I
+needed money urgently. Some of it can be sold within days; my pension plan and startup shares
+can't.
 
 **Free price data, one day late.** I'm not trading; I'm following mostly long-term
 investments. A price that is one day old doesn't change any decision I make, so I chose to
@@ -55,8 +69,7 @@ stay within EODHD's free tier instead of paying for more frequent data. When I h
 instruments than the free quota covers, the pipeline refreshes the oldest prices first and
 the rest catch up a day later.
 
-**An assistant with a fixed menu of questions it can answer.** *(Draft, please check it
-sounds like you.)* I didn't let the AI assistant write its own database queries. Instead it
+**An assistant with a fixed menu of questions it can answer.** I didn't let the AI assistant write its own database queries. Instead it
 chooses from a small set of tested queries, the same ones the dashboards use, and explains the
 result. That way every number it quotes comes from a calculation I trust, it can only read the
 summary tables, and it can't change anything. When a question falls outside what those tools
