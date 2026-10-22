@@ -1,0 +1,74 @@
+name: dbt docs
+
+# Publishes the dbt documentation site (model and column descriptions, tests, lineage graph)
+# to GitHub Pages. It builds against a throwaway PostgreSQL filled with synthetic data and never
+# connects to the demo or private database, so the published catalog describes fictional data only.
+
+on:
+  push:
+    branches: [main]
+    paths: ["dbt/**", "src/invest_intel/synthetic/**", ".github/workflows/dbt-docs.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dbt-docs
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: invest_intel
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: demo
+      PGHOST: localhost
+      PGDATABASE: invest_intel
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      DBT_PROFILES_DIR: .
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: pip install -e ".[dbt]"
+      - run: python -m invest_intel.synthetic.generate
+      # Build first so the catalog has real tables and column types to describe.
+      - run: dbt build
+        working-directory: dbt
+      - run: dbt docs generate
+        working-directory: dbt
+      # Publish only the three files the site needs, not compiled SQL or run logs.
+      - run: |
+          mkdir site
+          cp dbt/target/index.html dbt/target/manifest.json dbt/target/catalog.json site/
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

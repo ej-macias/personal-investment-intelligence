@@ -14,7 +14,7 @@ request with an access code, to keep API costs under control.
 <p>
   <img src="docs/img/overview.jpg" alt="Portfolio overview: market value, net invested, total gain and time-weighted return" width="200">
   <img src="docs/img/allocation.jpg" alt="Allocation grouped by instrument type, and gain by instrument" width="200">
-  <img src="docs/img/benchmark.jpg" alt="Portfolio return against the benchmark over the last year" width="200">
+  <img src="docs/img/benchmark.png" alt="Portfolio return against the benchmark over the last year" width="200">
   <img src="docs/img/assistant.jpg" alt="The AI assistant answering how much cash could be raised within a couple of days" width="200">
 </p>
 <p>
@@ -56,6 +56,10 @@ design decisions, the table catalogue and the security model are in
 - **Gold**: `dim_instrument`, `fct_transactions`, `fct_positions_daily`, and the analytical
   tables `portfolio_performance`, `investment_returns`, `asset_allocation` and
   `benchmark_comparison`.
+
+Every model, column and test, with the lineage graph from source to dashboard, is browsable in
+the **[dbt docs site](https://ej-macias.github.io/personal-investment-intelligence/)**. It is
+rebuilt on every change to `main` from synthetic data, never from a real database.
 
 ## The AI assistant
 
