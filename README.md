@@ -7,6 +7,20 @@ through an AI assistant that works from a fixed set of analytical tools.
 The public demo runs on a fictional portfolio valued at real market prices. The real portfolio lives in a separate, private
 database behind a login.
 
+**Live demo: [invest-intel-demo.streamlit.app](https://invest-intel-demo.streamlit.app)**,
+best viewed on a phone. The dashboards are open to everyone; the AI assistant is available on
+request with an access code, to keep API costs under control.
+
+<p>
+  <img src="docs/img/overview.jpg" alt="Portfolio overview: market value, net invested, total gain and time-weighted return" width="200">
+  <img src="docs/img/allocation.jpg" alt="Allocation grouped by instrument type, and gain by instrument" width="200">
+  <img src="docs/img/benchmark.jpg" alt="Portfolio return against the benchmark over the last year" width="200">
+  <img src="docs/img/assistant.jpg" alt="The AI assistant answering how much cash could be raised within a couple of days" width="200">
+</p>
+<p>
+  <img src="docs/img/explorer.png" alt="Investment explorer table with asset class, type, value, gain and return per holding" width="420">
+</p>
+
 ## Architecture
 
 ```
@@ -15,7 +29,7 @@ database behind a login.
  EODHD prices ───┘   GitHub Actions       JSONB,          staging,          marts    ├─ dashboards
                      daily                append-only     typed, tested              └─ AI assistant
                                                                                         (tool calling)
- Synthetic generator ─▶ raw (demo database only)
+ Fictional portfolio + real EODHD prices ─▶ raw (demo database only)
 ```
 
 | Layer | Technology | Where |
@@ -27,7 +41,7 @@ database behind a login.
 | AI assistant | Claude with tool calling | [src/invest_intel/assistant/](src/invest_intel/assistant/) |
 | Front end | Streamlit, Google login | [app/](app/) |
 | Scheduling and CI | GitHub Actions | [.github/workflows/](.github/workflows/) |
-| Demo data | Synthetic generator | [src/invest_intel/synthetic/generate.py](src/invest_intel/synthetic/generate.py) |
+| Demo data | Fictional portfolio at real EODHD prices | [src/invest_intel/synthetic/generate.py](src/invest_intel/synthetic/generate.py) |
 
 The design decisions, the table catalogue and the security model are in
 [docs/architecture.md](docs/architecture.md).
@@ -78,11 +92,13 @@ different GitHub environments.
 
 ## Status
 
-This is the project skeleton. The pipeline, models, dashboards and assistant tools run end to
-end on synthetic data. Still to do:
+The public demo runs end to end: weekly refresh at real prices, dbt models and tests, the
+dashboards and the assistant. The private deployment, on real accounts, is being set up. Still
+to do:
 
 - [ ] Confirm the Indexa payload fields against a live account (`stg_indexa__*.sql`)
-- [ ] Create the Airtable base ([fields](docs/architecture.md#airtable-base)), Neon projects, GitHub environments and Streamlit deployments
+- [x] Demo: Neon project, GitHub environment and Streamlit deployment
+- [ ] Private: Airtable base ([fields](docs/architecture.md#airtable-base)), Neon project, GitHub environment and Streamlit deployment
 - [ ] Model cash transactions (deposits, fees) and money-weighted return
 - [ ] Multi-currency support (everything is assumed to be EUR)
 - [ ] Evaluation set for the assistant's answers
