@@ -121,6 +121,8 @@ BENCHMARK = (
     0.12,
 )
 SYMBOLS = [i[2] for i in INSTRUMENTS] + [BENCHMARK[2]]
+# The labels Indexa's API uses (in Spanish), so the demo exercises the same mapping as real data.
+INDEXA_OPERATIONS = {"buy": "SUSCRIPCIÓN FONDOS INVERSIÓN", "sell": "REEMBOLSO FONDOS INVERSIÓN"}
 # Every demo instrument trades on an exchange, so all are Immediate; anything not listed is an ETF.
 INSTRUMENT_TYPES = {"4GLD.XETRA": "ETC", "SAP.XETRA": "Share"}
 
@@ -233,7 +235,7 @@ def generate(
                 "reference": reference,
                 "date": day.isoformat(),
                 "instrument": {"identifier": isin, "name": name},
-                "operation_type": kind,
+                "operation_type": INDEXA_OPERATIONS[kind],
                 "titles": quantity,
                 "price": price,
                 "amount": round(quantity * price, 2),
