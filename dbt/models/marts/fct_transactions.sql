@@ -2,7 +2,7 @@
 -- signed_quantity and signed_amount are positive for money going into an instrument.
 with indexa as (
     select
-        'indexa' as source,
+        'indexa'::text as source,
         account_id,
         transaction_id,
         trade_date,
@@ -16,7 +16,7 @@ with indexa as (
 
 manual as (
     select
-        'airtable' as source,
+        'airtable'::text as source,
         account_id,
         transaction_id,
         trade_date,

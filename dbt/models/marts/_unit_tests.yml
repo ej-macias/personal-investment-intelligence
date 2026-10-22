@@ -1,0 +1,67 @@
+version: 2
+
+# Unit tests check the calculations on a few hand-made rows, independently of the data loaded.
+# Run with the rest of the project by `dbt build`, or alone with `dbt test --select test_type:unit`.
+# Results are compared as text, so expected numbers carry the model's decimals ("1005.00").
+
+unit_tests:
+  - name: fees_raise_a_buy_and_reduce_a_sale
+    model: fct_transactions
+    description: >
+      Money put in includes fees; money received from a sale has the fees taken off. Indexa
+      amounts already include costs and pass through unchanged.
+    given:
+      - input: ref('stg_indexa__transactions')
+        rows:
+          - {account_id: IDX1, transaction_id: t1, trade_date: 2026-01-05, isin: FUND, transaction_type: buy, quantity: 5, price: 100, amount: 500}
+      - input: ref('stg_airtable__transactions')
+        rows:
+          - {account_id: Broker, transaction_id: r1, trade_date: 2026-01-05, isin: ETF, transaction_type: buy, quantity: 10, price: 100, fees: 5}
+          - {account_id: Broker, transaction_id: r2, trade_date: 2026-02-05, isin: ETF, transaction_type: sell, quantity: 4, price: 120, fees: 3}
+    expect:
+      rows:
+        - {transaction_id: t1, source: indexa, amount: 500, signed_quantity: 5, signed_amount: 500}
+        - {transaction_id: r1, source: airtable, amount: "1005.00", signed_quantity: 10, signed_amount: "1005.00"}
+        - {transaction_id: r2, source: airtable, amount: "477.00", signed_quantity: -4, signed_amount: "-477.00"}
+
+  - name: position_is_valued_at_cost_until_a_price_exists
+    model: fct_positions_daily
+    description: >
+      Before the first price the position is worth what it cost, flagged as estimated; from then
+      on it is units times price. A second buy adds to units and money invested.
+    overrides:
+      macros:
+        as_of_date: "'2026-01-03'::date"
+    given:
+      - input: ref('fct_transactions')
+        rows:
+          - {account_id: A, isin: ETF, trade_date: 2026-01-01, signed_quantity: 10, signed_amount: 1000}
+          - {account_id: A, isin: ETF, trade_date: 2026-01-03, signed_quantity: 5, signed_amount: 600}
+      - input: ref('int_prices_daily')
+        rows:
+          - {isin: ETF, date_day: 2026-01-02, close_price: 110}
+          - {isin: ETF, date_day: 2026-01-03, close_price: 120}
+    expect:
+      rows:
+        - {date_day: 2026-01-01, quantity: 10, net_flow: 1000, net_invested: 1000, is_price_estimated: true, market_value: "1000.00"}
+        - {date_day: 2026-01-02, quantity: 10, net_flow: 0, net_invested: 1000, is_price_estimated: false, market_value: "1100.00"}
+        - {date_day: 2026-01-03, quantity: 15, net_flow: 600, net_invested: 1600, is_price_estimated: false, market_value: "1800.00"}
+
+  - name: contributions_do_not_count_as_performance
+    model: portfolio_performance
+    description: >
+      A day when money is added but prices do not move has a 0% return, even though the value
+      goes up. Total gain is value minus money invested.
+    given:
+      - input: ref('fct_positions_daily')
+        rows:
+          - {date_day: 2026-01-01, market_value: 1000, net_invested: 1000, net_flow: 1000}
+          - {date_day: 2026-01-02, market_value: 1100, net_invested: 1000, net_flow: 0}
+          - {date_day: 2026-01-03, market_value: 1600, net_invested: 1500, net_flow: 500}
+          - {date_day: 2026-01-04, market_value: 1440, net_invested: 1500, net_flow: 0}
+    expect:
+      rows:
+        - {date_day: 2026-01-01, total_gain: 0, daily_return: "0.0000000000"}
+        - {date_day: 2026-01-02, total_gain: 100, daily_return: "0.1000000000"}
+        - {date_day: 2026-01-03, total_gain: 100, daily_return: "0.0000000000"}
+        - {date_day: 2026-01-04, total_gain: -60, daily_return: "-0.1000000000"}

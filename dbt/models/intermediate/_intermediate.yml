@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: int_prices_daily
+    description: >
+      One price per instrument per calendar day. EODHD first, Indexa's snapshot price where
+      EODHD has none; days without a quote (weekends, holidays, late fund prices) carry the
+      last known price forward.
+    columns:
+      - name: isin
+        description: Instrument priced.
+        data_tests: [not_null]
+      - name: date_day
+        description: Calendar day.
+        data_tests: [not_null]
+      - name: close_price
+        description: Price for the day, observed or carried forward.
+        data_tests: [not_null]
+      - name: is_forward_filled
+        description: True when the price is carried forward from an earlier day.
+        data_tests: [not_null]

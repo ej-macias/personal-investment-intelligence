@@ -30,11 +30,11 @@ union all
 select
     isin,
     instrument_name,
-    null as eodhd_symbol,
-    'Unclassified' as asset_class,
-    'Unclassified' as region,
-    'Unclassified' as instrument_type,
-    'Unclassified' as liquidity,
-    'EUR' as currency,
+    null::text as eodhd_symbol,
+    'Unclassified'::text as asset_class,
+    'Unclassified'::text as region,
+    'Unclassified'::text as instrument_type,
+    'Unclassified'::text as liquidity,
+    'EUR'::text as currency,
     false as is_benchmark
 from undescribed
