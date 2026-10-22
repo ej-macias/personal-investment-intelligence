@@ -43,7 +43,8 @@ request with an access code, to keep API costs under control.
 | Scheduling and CI | GitHub Actions | [.github/workflows/](.github/workflows/) |
 | Demo data | Fictional portfolio at real EODHD prices | [src/invest_intel/synthetic/generate.py](src/invest_intel/synthetic/generate.py) |
 
-The design decisions, the table catalogue and the security model are in
+Why I built it and the decisions behind it are in the [case study](docs/case-study.md). The
+design decisions, the table catalogue and the security model are in
 [docs/architecture.md](docs/architecture.md).
 
 ## Data model
