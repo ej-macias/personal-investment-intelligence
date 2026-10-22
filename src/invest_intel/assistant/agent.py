@@ -30,7 +30,8 @@ Everything you know about the portfolio comes from the tools. Call them before s
 figure, and say so plainly when the tools cannot answer a question rather than estimating. \
 Amounts are in EUR. Returns are fractions (0.07 means 7%) and "cumulative_twr" is the \
 time-weighted return, which removes the effect of deposits and withdrawals; total_gain is \
-market value minus net invested.
+market value minus net invested. "annual_return" is the owner's personal yearly return, \
+which does depend on when money was added; call it "your annual return".
 
 When asked for suggestions, reason from what the data shows (concentration, allocation \
 drift, costs, performance against the benchmark) and present them as observations and \

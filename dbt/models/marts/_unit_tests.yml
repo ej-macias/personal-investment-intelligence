@@ -65,3 +65,55 @@ unit_tests:
         - {date_day: 2026-01-02, total_gain: 100, daily_return: "0.1000000000"}
         - {date_day: 2026-01-03, total_gain: 100, daily_return: "0.0000000000"}
         - {date_day: 2026-01-04, total_gain: -60, daily_return: "-0.1000000000"}
+
+  - name: monthly_gain_leaves_out_money_added
+    model: portfolio_monthly
+    description: >
+      A month's gain is the change in value minus the money added; the current month is not
+      complete.
+    overrides:
+      macros:
+        as_of_date: "'2026-02-28'::date"
+    given:
+      - input: ref('portfolio_performance')
+        rows:
+          - {date_day: 2026-01-30, market_value: 1000, net_flow: 1000, daily_return: 0}
+          - {date_day: 2026-01-31, market_value: 1050, net_flow: 0, daily_return: 0.05}
+          - {date_day: 2026-02-01, market_value: 1550, net_flow: 500, daily_return: 0}
+          - {date_day: 2026-02-28, market_value: 1500, net_flow: 0, daily_return: -0.0322580645}
+    expect:
+      rows:
+        - {month: 2026-01-01, month_end_value: 1050, money_added: 1000, gain: 50, is_complete: true}
+        - {month: 2026-02-01, month_end_value: 1500, money_added: 500, gain: -50, is_complete: false}
+
+  - name: highlights_find_best_worst_month_and_biggest_drop
+    model: portfolio_highlights
+    description: >
+      Only complete months count; the biggest drop runs from the last high before the lowest
+      point, and the portfolio is still below that high today.
+    given:
+      - input: ref('portfolio_monthly')
+        rows:
+          - {month: 2026-01-01, gain: 50, return_pct: 0.05, is_complete: true}
+          - {month: 2026-02-01, gain: -30, return_pct: -0.03, is_complete: true}
+          - {month: 2026-03-01, gain: 20, return_pct: 0.02, is_complete: true}
+          - {month: 2026-04-01, gain: 100, return_pct: 0.10, is_complete: false}
+      - input: ref('portfolio_performance')
+        rows:
+          - {date_day: 2026-01-01, cumulative_twr: 0}
+          - {date_day: 2026-02-01, cumulative_twr: 0.2}
+          - {date_day: 2026-03-01, cumulative_twr: -0.1}
+          - {date_day: 2026-04-01, cumulative_twr: 0.08}
+    expect:
+      rows:
+        - best_month: 2026-01-01
+          best_month_return: 0.05
+          worst_month: 2026-02-01
+          worst_month_return: -0.03
+          months_counted: 3
+          months_with_gain: 2
+          share_of_months_with_gain: "0.6667"
+          biggest_drop_pct: "-0.2500000000"
+          biggest_drop_from: 2026-02-01
+          biggest_drop_to: 2026-03-01
+          below_high_pct: "-0.1000000000"

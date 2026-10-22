@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+import pandas as pd
 import streamlit as st
 
 import data
@@ -28,6 +29,40 @@ else:
         y_label="Return",
     )
     st.caption(f"Benchmark: {last['benchmark_name']}")
+
+st.subheader("Month by month")
+monthly = data.monthly()
+if monthly.empty:
+    st.info("No monthly data yet.")
+else:
+    st.bar_chart(monthly, x="month", y="gain", x_label="", y_label="Gain (EUR)")
+    st.caption("What the investments gained or lost each month, leaving out money added.")
+    facts = data.highlights()
+    if facts.get("months_counted"):
+        rows = [
+            ("Best month", f"{facts['best_month']:%b %Y}", f"{facts['best_month_return']:+.1%}"),
+            (
+                "Worst month",
+                f"{facts['worst_month']:%b %Y}",
+                f"{facts['worst_month_return']:+.1%}",
+            ),
+            (
+                "Months with a gain",
+                f"{facts['months_with_gain']} of {facts['months_counted']}",
+                f"{facts['share_of_months_with_gain']:.0%}",
+            ),
+            (
+                "Biggest drop from a high",
+                f"{facts['biggest_drop_from']:%d %b %Y} to {facts['biggest_drop_to']:%d %b %Y}",
+                f"{facts['biggest_drop_pct']:.1%}",
+            ),
+            ("Below its high today", "", f"{facts['below_high_pct']:.1%}"),
+        ]
+        st.dataframe(pd.DataFrame(rows, columns=["", "When", "Return"]), hide_index=True)
+        st.caption(
+            f"Based on {facts['months_counted']} complete months; "
+            "a short history can make these figures swing."
+        )
 
 st.subheader("Allocation")
 dimension = (

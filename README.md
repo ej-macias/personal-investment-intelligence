@@ -56,7 +56,7 @@ design decisions, the table catalogue and the security model are in
   one price per instrument per calendar day.
 - **Gold**: `dim_instrument`, `fct_transactions`, `fct_positions_daily`, and the analytical
   tables `portfolio_performance`, `investment_returns`, `asset_allocation` and
-  `benchmark_comparison`.
+  `benchmark_comparison`, `portfolio_monthly` and `portfolio_highlights`.
 
 Every model, column and test, with the lineage graph from source to dashboard, is browsable in
 the **[dbt docs site](https://ej-macias.github.io/personal-investment-intelligence/)**. It is
@@ -64,9 +64,10 @@ rebuilt on every change to `main` from synthetic data, never from a real databas
 
 ## The AI assistant
 
-The model has no database access and never writes SQL. It chooses among six tools
+The model has no database access and never writes SQL. It chooses among seven tools
 (`get_portfolio_summary`, `get_portfolio_performance`, `get_asset_allocation`,
-`get_investment_returns`, `compare_with_benchmark`, `get_transactions`), each backed by the
+`get_investment_returns`, `compare_with_benchmark`, `get_monthly_summary`,
+`get_transactions`), each backed by the
 same fixed queries the dashboards use, through a database role that can only read `gold`.
 
 ## Run the demo locally
@@ -105,6 +106,6 @@ to do:
 - [ ] Confirm the Indexa payload fields against a live account (`stg_indexa__*.sql`)
 - [x] Demo: Neon project, GitHub environment and Streamlit deployment
 - [ ] Private: Airtable base ([fields](docs/architecture.md#airtable-base)), Neon project, GitHub environment and Streamlit deployment
-- [ ] Model cash transactions (deposits, fees) and money-weighted return
+- [ ] Model cash transactions (deposits, withdrawals, fees) from Indexa
 - [ ] Multi-currency support (everything is assumed to be EUR)
 - [ ] Evaluation set for the assistant's answers

@@ -45,3 +45,18 @@ def transactions(isin: str) -> pd.DataFrame:
 @st.cache_data(ttl=TTL)
 def position_history(isin: str) -> pd.DataFrame:
     return pd.DataFrame(queries.position_history(isin))
+
+
+@st.cache_data(ttl=TTL)
+def annual_return() -> dict:
+    return queries.annual_return()
+
+
+@st.cache_data(ttl=TTL)
+def monthly() -> pd.DataFrame:
+    return pd.DataFrame(queries.monthly_summary())
+
+
+@st.cache_data(ttl=TTL)
+def highlights() -> dict:
+    return queries.highlights()
