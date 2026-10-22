@@ -2,11 +2,32 @@ import streamlit as st
 
 from invest_intel import config
 from invest_intel.assistant import agent
+from invest_intel.assistant.limits import DailyCounter, code_matches
 
 st.title("AI assistant")
 st.caption(
     "Answers come from a fixed set of analytical tools over your portfolio data. Not advice."
 )
+
+
+@st.cache_resource
+def _daily_counter() -> DailyCounter:
+    """Shared by every session in this app process, so it resets when the app restarts."""
+    limit = config.env("ASSISTANT_DAILY_LIMIT")
+    return DailyCounter(int(limit) if limit else None)
+
+
+# Optional access code, for deployments open to anyone such as the demo.
+access_code = config.env("ASSISTANT_ACCESS_CODE")
+if access_code and not st.session_state.get("assistant_unlocked"):
+    st.info("The assistant is available on request. Enter the access code to use it.")
+    given = st.text_input("Access code", type="password")
+    if given and code_matches(given, access_code):
+        st.session_state["assistant_unlocked"] = True
+        st.rerun()
+    if given:
+        st.error("That code is not valid.")
+    st.stop()
 
 # `messages` is the full API conversation (including tool calls); `chat` is what is shown.
 messages = st.session_state.setdefault("assistant_messages", [])
@@ -25,11 +46,16 @@ if not chat:
 asked = sum(1 for role, _ in chat if role == "user")
 question = st.chat_input("Ask about your investments", disabled=asked >= limit)
 if asked >= limit:
-    st.info("Question limit for this session reached. Reload the page to start again.")
+    st.info("You have reached the question limit for this session.")
 
 if question:
     st.chat_message("user").markdown(question)
     chat.append(("user", question))
+    if not _daily_counter().try_acquire():
+        reply = "The assistant has reached today's question limit. Try again tomorrow."
+        st.chat_message("assistant").markdown(reply)
+        chat.append(("assistant", reply))
+        st.stop()
     messages.append({"role": "user", "content": question})
     with st.chat_message("assistant"):
         with st.status("Looking at the data…") as status:
