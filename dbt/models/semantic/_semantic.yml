@@ -119,13 +119,15 @@ semantic_models:
     description: The whole portfolio, one row per month.
     model: ref('portfolio_monthly')
     defaults:
-      agg_time_dimension: month
+      agg_time_dimension: month_start
     entities:
       - name: portfolio_month
         type: primary
         expr: month
     dimensions:
-      - name: month
+      # "month" is reserved by MetricFlow for grouping by time.
+      - name: month_start
+        expr: month
         type: time
         type_params:
           time_granularity: month
