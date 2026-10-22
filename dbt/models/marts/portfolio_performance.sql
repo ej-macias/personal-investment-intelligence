@@ -14,11 +14,15 @@ with daily as (
 returns as (
     select
         *,
-        case
-            when lag(market_value) over (order by date_day) > 0
-                then (market_value - net_flow) / lag(market_value) over (order by date_day) - 1
-            else 0
-        end as daily_return
+        -- Rounded so the stored value has a fixed number of decimals.
+        round(
+            case
+                when lag(market_value) over (order by date_day) > 0
+                    then (market_value - net_flow) / lag(market_value) over (order by date_day) - 1
+                else 0
+            end,
+            10
+        ) as daily_return
     from daily
 )
 
