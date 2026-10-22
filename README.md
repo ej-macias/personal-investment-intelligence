@@ -37,6 +37,7 @@ request with an access code, to keep API costs under control.
 | Ingestion | Python, httpx, psycopg | [src/invest_intel/ingestion/](src/invest_intel/ingestion/) |
 | Storage | PostgreSQL (Neon) | schemas `raw`, `silver`, `gold` |
 | Transformation and data quality | dbt Core | [dbt/](dbt/) |
+| Metric definitions | dbt semantic layer (MetricFlow) | [docs/semantic-layer.md](docs/semantic-layer.md) |
 | Query layer | Fixed, parameterised SQL over `gold` | [src/invest_intel/analytics/queries.py](src/invest_intel/analytics/queries.py) |
 | AI assistant | Claude with tool calling | [src/invest_intel/assistant/](src/invest_intel/assistant/) |
 | Front end | Streamlit, Google login | [app/](app/) |

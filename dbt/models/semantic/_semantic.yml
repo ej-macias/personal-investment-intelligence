@@ -1,0 +1,212 @@
+version: 2
+
+# The semantic layer: one agreed definition of each metric, built on the gold models, that
+# MetricFlow can slice by time and by instrument (asset class, region, type, liquidity).
+# See docs/semantic-layer.md for example queries.
+
+models:
+  - name: metricflow_time_spine
+    description: One row per day, used by MetricFlow to roll metrics up to weeks, months and years.
+    time_spine:
+      standard_granularity_column: date_day
+    columns:
+      - name: date_day
+        description: Calendar day.
+        granularity: day
+        data_tests: [unique, not_null]
+
+semantic_models:
+  - name: portfolio_days
+    description: The whole portfolio, one row per day.
+    model: ref('portfolio_performance')
+    defaults:
+      agg_time_dimension: date_day
+    entities:
+      - name: portfolio_day
+        type: primary
+        expr: date_day
+    dimensions:
+      - name: date_day
+        type: time
+        type_params:
+          time_granularity: day
+    measures:
+      # Values on a date: over a month or year, take the last day's, never a sum of days.
+      - name: portfolio_value
+        description: Value of everything held.
+        expr: market_value
+        agg: sum
+        non_additive_dimension: &last_day
+          name: date_day
+          window_choice: max
+      - name: portfolio_money_invested
+        description: Money put in minus money taken out, to date.
+        expr: net_invested
+        agg: sum
+        non_additive_dimension: *last_day
+      - name: portfolio_gain
+        description: Value minus money invested.
+        expr: total_gain
+        agg: sum
+        non_additive_dimension: *last_day
+      # Flows: these do add up over a period.
+      - name: portfolio_money_added
+        description: Money put in minus money taken out during the period.
+        expr: net_flow
+        agg: sum
+
+  - name: holdings
+    description: Each holding, one row per account, instrument and day.
+    model: ref('fct_positions_daily')
+    defaults:
+      agg_time_dimension: date_day
+    entities:
+      - name: position
+        type: primary
+        expr: position_key
+      - name: instrument
+        type: foreign
+        expr: isin
+    dimensions:
+      - name: date_day
+        type: time
+        type_params:
+          time_granularity: day
+    measures:
+      - name: holding_value
+        description: Value of the holding.
+        expr: market_value
+        agg: sum
+        non_additive_dimension: *last_day
+      - name: holding_money_invested
+        description: Money put into the holding minus money taken out, to date.
+        expr: net_invested
+        agg: sum
+        non_additive_dimension: *last_day
+
+  - name: trades
+    description: Each buy and sell.
+    model: ref('fct_transactions')
+    defaults:
+      agg_time_dimension: trade_date
+    entities:
+      - name: trade
+        type: primary
+        expr: transaction_key
+      - name: instrument
+        type: foreign
+        expr: isin
+    dimensions:
+      - name: trade_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: transaction_type
+        type: categorical
+      - name: source
+        type: categorical
+    measures:
+      - name: amount_bought
+        description: Money spent on buys, fees included.
+        expr: "case when transaction_type = 'buy' then amount else 0 end"
+        agg: sum
+      - name: amount_sold
+        description: Money received from sales, after fees.
+        expr: "case when transaction_type = 'sell' then amount else 0 end"
+        agg: sum
+
+  - name: instruments
+    description: What each instrument is, as described in Airtable.
+    model: ref('dim_instrument')
+    entities:
+      - name: instrument
+        type: primary
+        expr: isin
+    dimensions:
+      - name: instrument_name
+        type: categorical
+      - name: asset_class
+        type: categorical
+      - name: region
+        type: categorical
+      - name: instrument_type
+        type: categorical
+      - name: liquidity
+        type: categorical
+
+metrics:
+  - name: portfolio_value
+    label: Portfolio value
+    description: What everything held is worth, on the last day of the period.
+    type: simple
+    type_params:
+      measure: portfolio_value
+
+  - name: money_invested
+    label: Money invested
+    description: Money put in minus money taken out, up to the last day of the period.
+    type: simple
+    type_params:
+      measure: portfolio_money_invested
+
+  - name: total_gain
+    label: Total gain
+    description: Portfolio value minus money invested.
+    type: simple
+    type_params:
+      measure: portfolio_gain
+
+  - name: gain_pct
+    label: Gain %
+    description: Total gain as a share of money invested. 0.10 means 10%.
+    type: ratio
+    type_params:
+      numerator: total_gain
+      denominator: money_invested
+
+  - name: money_added
+    label: Money added
+    description: Money put in minus money taken out during the period, e.g. per month.
+    type: simple
+    type_params:
+      measure: portfolio_money_added
+
+  - name: holding_value
+    label: Holding value
+    description: >
+      What the holdings are worth on the last day of the period. Group by instrument__asset_class
+      or another instrument dimension to see where the money is.
+    type: simple
+    type_params:
+      measure: holding_value
+
+  - name: holding_gain
+    label: Holding gain
+    description: Holding value minus the money invested in it.
+    type: derived
+    type_params:
+      expr: holding_value - holding_money_invested
+      metrics:
+        - name: holding_value
+        - name: holding_money_invested
+
+  - name: holding_money_invested
+    label: Money invested in holdings
+    description: Money put into the holdings minus money taken out, up to the last day of the period.
+    type: simple
+    type_params:
+      measure: holding_money_invested
+
+  - name: amount_bought
+    label: Amount bought
+    description: Money spent on buys during the period, fees included.
+    type: simple
+    type_params:
+      measure: amount_bought
+
+  - name: amount_sold
+    label: Amount sold
+    description: Money received from sales during the period, after fees.
+    type: simple
+    type_params:
+      measure: amount_sold
