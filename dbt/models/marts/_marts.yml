@@ -407,3 +407,91 @@ models:
         description: Portfolio return minus benchmark return. Positive means ahead of the benchmark.
         data_type: numeric
         data_tests: [not_null]
+
+  - name: portfolio_monthly
+    description: >
+      The portfolio month by month. The current month is included and marked as not complete.
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: month
+        description: First day of the month.
+        data_type: date
+        constraints: [{type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: last_day
+        description: Last day with data in the month (today for the current month).
+        data_type: date
+        data_tests: [not_null]
+      - name: month_end_value
+        description: Value of everything held on the month's last day.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: money_added
+        description: Money put in minus money taken out during the month.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: gain
+        description: >
+          What the investments gained or lost during the month, in EUR: the change in value
+          minus the money added.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: return_pct
+        description: The month's return, leaving out money added. 0.02 means 2%.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: is_complete
+        description: False for the current month.
+        data_type: boolean
+        data_tests: [not_null]
+
+  - name: portfolio_highlights
+    description: >
+      One row of simple facts about the ups and downs: best and worst complete month, how often a
+      month ended with a gain, and the biggest drop from a previous high. Drops are measured on
+      the time-weighted return, so adding or withdrawing money does not count as a rise or a fall.
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: best_month
+        description: Complete month with the highest return.
+        data_type: date
+      - name: best_month_return
+        description: Its return.
+        data_type: numeric
+      - name: worst_month
+        description: Complete month with the lowest return.
+        data_type: date
+      - name: worst_month_return
+        description: Its return.
+        data_type: numeric
+      - name: months_counted
+        description: Complete months with data.
+        data_type: integer
+        data_tests: [not_null]
+      - name: months_with_gain
+        description: Complete months in which the investments gained.
+        data_type: integer
+        data_tests: [not_null]
+      - name: share_of_months_with_gain
+        description: months_with_gain divided by months_counted.
+        data_type: numeric
+      - name: biggest_drop_pct
+        description: >
+          The largest fall from a previous high to a later low. -0.15 means the portfolio was at
+          one point 15% below its earlier high.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: biggest_drop_from
+        description: Day of the high before that fall.
+        data_type: date
+        data_tests: [not_null]
+      - name: biggest_drop_to
+        description: Day of the low.
+        data_type: date
+        data_tests: [not_null]
+      - name: below_high_pct
+        description: How far below its highest point the portfolio is today. 0 means at a high.
+        data_type: numeric
+        data_tests: [not_null]

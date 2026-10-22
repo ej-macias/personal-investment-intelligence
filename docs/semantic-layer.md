@@ -17,6 +17,7 @@ however the metric is sliced.
 | `holding_value` | What the holdings are worth; can be split by instrument |
 | `holding_money_invested` | Money put into the holdings, net of sales; can be split by instrument |
 | `holding_gain` | Holding value minus the money put into it |
+| `investment_gain` | What the investments gained or lost, leaving out money added; by month, quarter or year |
 | `amount_bought` / `amount_sold` | Money spent on buys / received from sales during the period |
 
 Values on a date (value, money invested, gain) are never added up across days: for a month,

@@ -115,6 +115,28 @@ semantic_models:
         expr: "case when transaction_type = 'sell' then amount else 0 end"
         agg: sum
 
+  - name: portfolio_months
+    description: The whole portfolio, one row per month.
+    model: ref('portfolio_monthly')
+    defaults:
+      agg_time_dimension: month
+    entities:
+      - name: portfolio_month
+        type: primary
+        expr: month
+    dimensions:
+      - name: month
+        type: time
+        type_params:
+          time_granularity: month
+      - name: is_complete
+        type: categorical
+    measures:
+      - name: investment_gain
+        description: What the investments gained or lost, leaving out money added.
+        expr: gain
+        agg: sum
+
   - name: instruments
     description: What each instrument is, as described in Airtable.
     model: ref('dim_instrument')
@@ -210,3 +232,12 @@ metrics:
     type: simple
     type_params:
       measure: amount_sold
+
+  - name: investment_gain
+    label: Investment gain
+    description: >
+      What the investments gained or lost during the period, in EUR, leaving out money added.
+      By month, quarter or year.
+    type: simple
+    type_params:
+      measure: investment_gain

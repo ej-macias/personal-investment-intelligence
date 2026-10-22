@@ -61,6 +61,14 @@ def _get_transactions(args: dict[str, Any]) -> Any:
     return queries.transactions(isin=args.get("isin"), limit=args.get("limit", 50))
 
 
+def _get_monthly_summary(_: dict[str, Any]) -> Any:
+    return {
+        "annual_return": queries.annual_return(),
+        "highlights": queries.highlights(),
+        "months": queries.monthly_summary(),
+    }
+
+
 def _tool(name: str, description: str, properties: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "name": name,
@@ -104,6 +112,14 @@ TOOLS: list[dict[str, Any]] = [
         {"start_date": _DATE, "frequency": _FREQUENCY},
     ),
     _tool(
+        "get_monthly_summary",
+        "Your annual return (the yearly rate your own money has earned, given when you added "
+        "it; null with under 3 months of history), month-by-month value, money added, gain "
+        "and return, and highlights: best and worst month, share of months with a gain, the "
+        "biggest drop from a previous high and how far below its high the portfolio is now. "
+        "Use for questions about personal return, good and bad months, and ups and downs.",
+    ),
+    _tool(
         "get_transactions",
         "Most recent buys and sells, optionally for one instrument.",
         {
@@ -122,6 +138,7 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "get_asset_allocation": _get_asset_allocation,
     "get_investment_returns": _get_investment_returns,
     "compare_with_benchmark": _compare_with_benchmark,
+    "get_monthly_summary": _get_monthly_summary,
     "get_transactions": _get_transactions,
 }
 

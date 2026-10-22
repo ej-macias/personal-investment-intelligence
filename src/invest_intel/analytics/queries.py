@@ -11,6 +11,7 @@ from datetime import date
 from typing import Any
 
 from invest_intel import db
+from invest_intel.analytics.returns import annual_return as _annual_return
 
 Rows = list[dict[str, Any]]
 
@@ -23,6 +24,8 @@ ALLOCATION_DIMENSIONS = {
     "instrument": "instrument_name",
 }
 FREQUENCIES = ("daily", "monthly")
+# Below this much history a yearly rate swings too much to be meaningful.
+MIN_DAYS_FOR_ANNUAL_RETURN = 90
 
 
 def portfolio_summary() -> dict[str, Any]:
@@ -151,3 +154,58 @@ def position_history(isin: str) -> Rows:
         """,
         {"isin": isin},
     )
+
+
+def annual_return() -> dict[str, Any]:
+    """Your annual return (money-weighted), from every day money was added or taken out plus
+    today's value. `annual_return` is None while the history is shorter than
+    MIN_DAYS_FOR_ANNUAL_RETURN."""
+    rows = db.query(
+        """
+        select date_day, net_flow::float8, market_value::float8
+        from gold.portfolio_performance
+        where net_flow <> 0
+           or date_day = (select max(date_day) from gold.portfolio_performance)
+        order by date_day
+        """
+    )
+    if not rows:
+        return {}
+    first, last = rows[0]["date_day"], rows[-1]["date_day"]
+    days = (last - first).days
+    result: dict[str, Any] = {"since": first, "as_of": last, "days": days, "annual_return": None}
+    if days >= MIN_DAYS_FOR_ANNUAL_RETURN:
+        # From your side: money put in is negative, money taken out and today's value positive.
+        flows = [(r["date_day"], -r["net_flow"]) for r in rows if r["net_flow"]]
+        flows.append((last, rows[-1]["market_value"]))
+        try:
+            result["annual_return"] = _annual_return(flows)
+        except ValueError:
+            pass
+    return result
+
+
+def monthly_summary() -> Rows:
+    """Month by month: value at the month end, money added, gain and return."""
+    return db.query(
+        """
+        select month, month_end_value::float8, money_added::float8, gain::float8,
+               return_pct::float8, is_complete
+        from gold.portfolio_monthly
+        order by month
+        """
+    )
+
+
+def highlights() -> dict[str, Any]:
+    """Best and worst month, share of months with a gain, biggest drop from a high."""
+    rows = db.query(
+        """
+        select best_month, best_month_return::float8, worst_month, worst_month_return::float8,
+               months_counted, months_with_gain, share_of_months_with_gain::float8,
+               biggest_drop_pct::float8, biggest_drop_from, biggest_drop_to,
+               below_high_pct::float8
+        from gold.portfolio_highlights
+        """
+    )
+    return rows[0] if rows else {}

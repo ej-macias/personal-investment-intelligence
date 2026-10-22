@@ -59,6 +59,8 @@ Columns in every table: `id, run_id, loaded_at, entity, record_key, payload, pay
 | `investment_returns` | account, instrument | Cost, value and gain per holding today |
 | `asset_allocation` | instrument and platform | Weights by asset class, region, instrument type, liquidity, platform or instrument |
 | `benchmark_comparison` | benchmark, day | Am I ahead of or behind the market? |
+| `portfolio_monthly` | month | Month-end value, money added, gain and return per month |
+| `portfolio_highlights` | one row | Best and worst month, share of months with a gain, biggest drop from a high |
 
 Candidates for later: `fct_cash_flows` (deposits, withdrawals, fees), `portfolio_performance_monthly`,
 `allocation_drift` against target weights, and a money-weighted return per account.

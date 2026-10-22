@@ -14,7 +14,20 @@ left.metric("Market value", f"€{summary['market_value']:,.0f}")
 right.metric("Total gain", f"€{summary['total_gain']:,.0f}")
 left.metric("Net invested", f"€{summary['net_invested']:,.0f}")
 right.metric("Time-weighted return", f"{summary['cumulative_twr']:.1%}")
+personal = data.annual_return()
+if personal.get("annual_return") is not None:
+    left.metric(
+        "Your annual return",
+        f"{personal['annual_return']:.1%}",
+        help="The yearly rate your own money has earned, taking into account when you added "
+        "it. The time-weighted return leaves that timing out, to show how the investments did.",
+    )
 st.caption(f"As of {summary['date_day']}")
+if personal.get("annual_return") is not None and personal["days"] < 365:
+    st.caption(
+        f"Your annual return is based on {personal['days']} days of history; "
+        "a short history can make it swing."
+    )
 
 st.subheader("Value vs. money invested")
 performance = data.performance()
