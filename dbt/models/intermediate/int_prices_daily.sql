@@ -48,7 +48,7 @@ spine as (
         g.d::date as date_day
     from bounds as b
     cross join lateral generate_series(
-        b.first_date::timestamp, current_date::timestamp, interval '1 day'
+        b.first_date::timestamp, {{ as_of_date() }}::timestamp, interval '1 day'
     ) as g (d)
 ),
 

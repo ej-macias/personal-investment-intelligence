@@ -19,6 +19,7 @@ all of it and changes or adds the following.
 | One query layer | Dashboards and assistant tools call the same functions | A number in a chart and the same number in an answer cannot disagree |
 | Login | Streamlit's built-in `st.login()` with Google, plus an email allowlist that fails closed | No password handling in the app; works well on a phone |
 | CI | Runs the synthetic pipeline and `dbt build` against a PostgreSQL service container | Every change is tested end to end without touching real data |
+| Data quality | Every model and column is described and tested; gold models have enforced contracts (declared column types and primary keys); unit tests cover fees, valuing a position before its first price, and leaving contributions out of returns | A change that would alter a gold table's shape, or a calculation, fails in CI instead of in the app |
 
 ## Table catalogue
 
@@ -241,6 +242,8 @@ and does not pass them to pull requests from forks. The workflows refer to them 
   account number.
 - The app and the assistant use a role that can only `select` from `gold` ([sql/roles.sql](../sql/roles.sql)).
 - Tool arguments are validated; the one dynamic column name comes from a whitelist.
+- Tool results never include `account_id` (for Indexa, the account number) before they are sent
+  to the Anthropic API. The dashboards still show it.
 - The demo is open to anyone, so the assistant's API spend has four layers of protection:
   an optional access code (`ASSISTANT_ACCESS_CODE`) that strangers don't have; an optional
   cap on questions per day across all visitors (`ASSISTANT_DAILY_LIMIT`), counted per app

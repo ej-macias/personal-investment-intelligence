@@ -1,59 +1,409 @@
 version: 2
 
+# Gold models are what the app, the assistant and ad-hoc queries read, so their shape is a
+# contract: every column has a declared type, and a build that would change a type or drop a
+# column fails before the table is replaced. Key columns are also enforced as primary keys.
+
 models:
   - name: dim_instrument
-    description: One row per instrument (fund, ETF, share or benchmark index).
+    description: >
+      One row per instrument: a fund, ETF, share or the benchmark. Described by hand in Airtable;
+      instruments seen in Indexa but not yet described there still appear, as Unclassified.
+    config:
+      contract: {enforced: true}
     columns:
       - name: isin
+        description: International identifier of the instrument, or a made-up code for unlisted ones.
+        data_type: text
+        constraints: [{type: primary_key}]
         data_tests: [unique, not_null]
-
-  - name: fct_transactions
-    description: One row per buy or sell, from Indexa and from Airtable.
-    columns:
-      - name: transaction_key
-        data_tests: [unique, not_null]
-      - name: transaction_type
+      - name: instrument_name
+        description: Display name.
+        data_type: text
+      - name: eodhd_symbol
+        description: Symbol used to fetch daily prices from EODHD. Empty when prices come from Indexa.
+        data_type: text
+      - name: asset_class
+        description: What the instrument invests in (Equity, Fixed income, Money market...).
+        data_type: text
         data_tests:
+          - not_null
           - accepted_values:
               arguments:
-                values: ["buy", "sell"]
-      - name: isin
+                values: &asset_classes
+                  - Equity
+                  - Fixed income
+                  - Money market
+                  - Mixed
+                  - Real estate
+                  - Commodities
+                  - Crypto
+                  - Unclassified
+              config: {severity: warn}
+      - name: region
+        description: Where the instrument's holdings are, not where it is listed.
+        data_type: text
+        data_tests: [not_null]
+      - name: instrument_type
+        description: The wrapper it is held through (ETF, Index fund, Pension plan...).
+        data_type: text
         data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: &instrument_types
+                  - ETF
+                  - ETC
+                  - Index fund
+                  - Pension plan
+                  - Share
+                  - Private shares
+                  - Crypto
+                  - Unclassified
+              config: {severity: warn}
+      - name: liquidity
+        description: How quickly it can be turned into cash.
+        data_type: text
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: &liquidity_levels [Immediate, Days, Restricted, Illiquid, Unclassified]
+              config: {severity: warn}
+      - name: currency
+        description: Currency of the listing traded. Only EUR is supported for now.
+        data_type: text
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [EUR]
+              config: {severity: warn}
+      - name: is_benchmark
+        description: True for the instrument the portfolio is compared against. Never counted as a holding.
+        data_type: boolean
+        data_tests: [not_null]
+
+  - name: fct_transactions
+    description: One row per buy or sell, from Indexa and from Airtable, in one shape.
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: transaction_key
+        description: Unique key, built from source, account and transaction id.
+        data_type: text
+        constraints: [{type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: source
+        description: Where the transaction came from.
+        data_type: text
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [indexa, airtable]
+      - name: account_id
+        description: Indexa account number, or the platform name given in Airtable.
+        data_type: text
+        data_tests: [not_null]
+      - name: transaction_id
+        description: Id of the transaction in its source.
+        data_type: text
+        data_tests: [not_null]
+      - name: trade_date
+        description: Day the trade happened.
+        data_type: date
+        data_tests: [not_null]
+      - name: isin
+        description: Instrument traded.
+        data_type: text
+        data_tests:
+          - not_null
           - relationships:
               arguments:
                 to: ref('dim_instrument')
                 field: isin
               config:
                 severity: warn
+      - name: transaction_type
+        description: buy or sell.
+        data_type: text
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["buy", "sell"]
       - name: quantity
+        description: Units traded, always positive.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: price
+        description: Price per unit in EUR.
+        data_type: numeric
+      - name: amount
+        description: >
+          Money that changed hands in EUR, always positive. Fees are added to a buy and taken off
+          a sale.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: signed_quantity
+        description: Quantity, positive for a buy and negative for a sale.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: signed_amount
+        description: Amount, positive for money put in and negative for money taken out.
+        data_type: numeric
         data_tests: [not_null]
 
   - name: fct_positions_daily
-    description: Position, net invested and market value per account, instrument and day.
+    description: >
+      Units held, money invested and market value per account, instrument and day, from the
+      first trade until today. Positions are rebuilt from transactions.
+    config:
+      contract: {enforced: true}
     columns:
       - name: position_key
+        description: Unique key, built from account, instrument and day.
+        data_type: text
+        constraints: [{type: primary_key}]
         data_tests: [unique, not_null]
+      - name: account_id
+        description: Account holding the position.
+        data_type: text
+        data_tests: [not_null]
+      - name: isin
+        description: Instrument held.
+        data_type: text
+        data_tests: [not_null]
+      - name: date_day
+        description: Calendar day.
+        data_type: date
+        data_tests: [not_null]
+      - name: quantity
+        description: Units held at the end of the day.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: net_flow
+        description: Money put in (positive) or taken out (negative) that day.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: net_invested
+        description: Money put in minus money taken out, up to that day.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: close_price
+        description: Price used for the day. Empty before the price history starts.
+        data_type: numeric
+      - name: is_price_estimated
+        description: True when there was no price yet and the position is valued at what it cost.
+        data_type: boolean
+        data_tests: [not_null]
+      - name: market_value
+        description: Units held times the day's price, in EUR.
+        data_type: numeric
+        data_tests: [not_null]
 
   - name: portfolio_performance
-    description: Daily portfolio value, net invested, gain and time-weighted return.
+    description: Whole-portfolio value, money invested, gain and time-weighted return per day.
+    config:
+      contract: {enforced: true}
     columns:
       - name: date_day
+        description: Calendar day.
+        data_type: date
+        constraints: [{type: primary_key}]
         data_tests: [unique, not_null]
       - name: market_value
+        description: Value of everything held that day, in EUR.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: net_invested
+        description: Money put in minus money taken out, up to that day.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: net_flow
+        description: Money put in or taken out that day.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: total_gain
+        description: Market value minus money invested.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: daily_return
+        description: >
+          The day's return, leaving out money put in or taken out that day, so a contribution
+          does not count as performance. 0.01 means 1%.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: cumulative_twr
+        description: >
+          Time-weighted return since the first day: the daily returns chained together. It shows
+          how the investments did, whatever the timing of contributions.
+        data_type: numeric
         data_tests: [not_null]
 
   - name: investment_returns
-    description: Current cost, value and gain per account and instrument.
-
-  - name: asset_allocation
-    description: Current holdings per instrument and platform with portfolio weight.
+    description: Where each holding stands today. Closed positions stay in, with their realised gain.
+    config:
+      contract: {enforced: true}
+    constraints:
+      - type: primary_key
+        columns: [account_id, isin]
     columns:
-      - name: allocation_key
-        data_tests: [unique, not_null]
-      - name: isin
+      - name: account_id
+        description: Account holding the position.
+        data_type: text
         data_tests: [not_null]
       - name: platform
+        description: Indexa Capital for every Indexa account; otherwise the platform named in Airtable.
+        data_type: text
+        data_tests: [not_null]
+      - name: isin
+        description: Instrument held.
+        data_type: text
+        data_tests: [not_null]
+      - name: instrument_name
+        description: Display name.
+        data_type: text
+      - name: asset_class
+        description: From dim_instrument.
+        data_type: text
+      - name: region
+        description: From dim_instrument.
+        data_type: text
+      - name: instrument_type
+        description: From dim_instrument.
+        data_type: text
+      - name: liquidity
+        description: From dim_instrument.
+        data_type: text
+      - name: first_trade_date
+        description: Day of the first trade in this account and instrument.
+        data_type: date
+        data_tests: [not_null]
+      - name: quantity
+        description: Units held today. Zero for a closed position.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: net_invested
+        description: Money put in minus money taken out.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: market_value
+        description: Value today, in EUR.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: total_gain
+        description: Market value minus money invested.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: return_pct
+        description: Total gain as a share of everything ever bought. 0.10 means 10%.
+        data_type: numeric
+      - name: is_price_estimated
+        description: True when there is no price yet and the value is what it cost.
+        data_type: boolean
+        data_tests: [not_null]
+
+  - name: asset_allocation
+    description: >
+      Current holdings per instrument and platform with their share of the portfolio. The app
+      groups it by asset class, region, type, liquidity or platform.
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: allocation_key
+        description: Unique key, built from instrument and platform.
+        data_type: text
+        constraints: [{type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: isin
+        description: Instrument held.
+        data_type: text
+        data_tests: [not_null]
+      - name: platform
+        description: Where it is held.
+        data_type: text
+        data_tests: [not_null]
+      - name: instrument_name
+        description: Display name, or the ISIN when there is none.
+        data_type: text
+        data_tests: [not_null]
+      - name: asset_class
+        description: From dim_instrument; Unclassified when missing.
+        data_type: text
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: *asset_classes
+              config: {severity: warn}
+      - name: region
+        description: From dim_instrument; Unclassified when missing.
+        data_type: text
+        data_tests: [not_null]
+      - name: instrument_type
+        description: From dim_instrument; Unclassified when missing.
+        data_type: text
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: *instrument_types
+              config: {severity: warn}
+      - name: liquidity
+        description: From dim_instrument; Unclassified when missing.
+        data_type: text
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: *liquidity_levels
+              config: {severity: warn}
+      - name: market_value
+        description: Value today, in EUR.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: weight
+        description: Share of the whole portfolio's value. All rows add up to 1.
+        data_type: numeric
         data_tests: [not_null]
 
   - name: benchmark_comparison
-    description: Portfolio vs benchmark cumulative return per day.
+    description: >
+      Portfolio return next to the benchmark's return per day, both starting from zero on the
+      first day they have in common.
+    config:
+      contract: {enforced: true}
+    constraints:
+      - type: primary_key
+        columns: [benchmark_isin, date_day]
+    columns:
+      - name: benchmark_isin
+        description: The benchmark instrument.
+        data_type: text
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_instrument')
+                field: isin
+      - name: benchmark_name
+        description: Its display name.
+        data_type: text
+      - name: date_day
+        description: Calendar day.
+        data_type: date
+        data_tests: [not_null]
+      - name: portfolio_return
+        description: Portfolio time-weighted return since the first common day.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: benchmark_return
+        description: Benchmark price return since the first common day.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: excess_return
+        description: Portfolio return minus benchmark return. Positive means ahead of the benchmark.
+        data_type: numeric
+        data_tests: [not_null]

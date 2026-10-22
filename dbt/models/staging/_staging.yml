@@ -1,37 +1,152 @@
 version: 2
 
+# Silver: each source typed and deduplicated (latest loaded version of each record), with no
+# business logic yet.
+
 models:
   - name: stg_indexa__transactions
-    description: Indexa fund transactions, typed and deduplicated.
+    description: Indexa fund buys and sells, typed and deduplicated.
     columns:
-      - name: transaction_id
+      - name: account_id
+        description: Indexa account number.
         data_tests: [not_null]
-      - name: isin
+      - name: transaction_id
+        description: Indexa's id for the transaction.
         data_tests: [not_null]
       - name: trade_date
+        description: Day the trade happened.
         data_tests: [not_null]
+      - name: isin
+        description: Fund traded.
+        data_tests: [not_null]
+      - name: instrument_name
+        description: Fund name as Indexa reports it.
+      - name: transaction_type
+        description: Indexa's operation type, lower case.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["buy", "sell"]
+              config: {severity: warn}
+      - name: quantity
+        description: Units traded, always positive.
+        data_tests: [not_null]
+      - name: price
+        description: Price per unit in EUR.
+      - name: amount
+        description: Money that changed hands in EUR, always positive.
+        data_tests: [not_null]
+      - name: loaded_at
+        description: When this version of the record was loaded into raw.
 
   - name: stg_indexa__positions
-    description: Positions reported by Indexa per snapshot. Used for prices and reconciliation.
+    description: >
+      Positions Indexa reports in each daily portfolio snapshot. Used for prices of funds without
+      an EODHD symbol and to check positions rebuilt from transactions.
+    columns:
+      - name: account_id
+        description: Indexa account number.
+        data_tests: [not_null]
+      - name: snapshot_date
+        description: Day of the snapshot.
+        data_tests: [not_null]
+      - name: isin
+        description: Fund held.
+        data_tests: [not_null]
+      - name: instrument_name
+        description: Fund name as Indexa reports it.
+      - name: quantity
+        description: Units held according to Indexa.
+      - name: price
+        description: Price per unit Indexa used for the snapshot.
+      - name: market_value
+        description: Value of the position according to Indexa.
 
   - name: stg_airtable__instruments
-    description: Instrument metadata and EODHD symbol mapping.
+    description: Instrument descriptions and the ISIN to EODHD symbol mapping, kept by hand in Airtable.
     columns:
-      - name: isin
+      - name: airtable_record_id
+        description: Airtable's id for the row.
         data_tests: [unique, not_null]
+      - name: isin
+        description: Identifier of the instrument.
+        data_tests: [unique, not_null]
+      - name: instrument_name
+        description: Display name.
+      - name: eodhd_symbol
+        description: Symbol for EODHD prices. Empty when prices come from Indexa.
+        data_tests: [unique]
+      - name: asset_class
+        description: What it invests in. Unclassified when left empty.
+        data_tests: [not_null]
+      - name: region
+        description: Where its holdings are. Unclassified when left empty.
+        data_tests: [not_null]
+      - name: instrument_type
+        description: The wrapper it is held through. Unclassified when left empty.
+        data_tests: [not_null]
+      - name: liquidity
+        description: How quickly it can be turned into cash. Unclassified when left empty.
+        data_tests: [not_null]
+      - name: currency
+        description: Currency of the listing traded. EUR when left empty.
+        data_tests: [not_null]
+      - name: is_benchmark
+        description: True for the benchmark. False when the checkbox is not ticked.
+        data_tests: [not_null]
 
   - name: stg_airtable__transactions
-    description: Manually tracked transactions, typed and deduplicated.
+    description: Buys and sells outside Indexa, entered by hand in Airtable.
     columns:
+      - name: account_id
+        description: The platform named in the Airtable account field, or Manual when empty.
+        data_tests: [not_null]
       - name: transaction_id
+        description: Airtable's id for the row.
         data_tests: [unique, not_null]
+      - name: trade_date
+        description: Day the trade happened.
+        data_tests: [not_null]
       - name: isin
-        data_tests: [not_null]
+        description: Instrument traded.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_airtable__instruments')
+                field: isin
+              config: {severity: warn}
+      - name: transaction_type
+        description: buy or sell, lower case.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["buy", "sell"]
       - name: quantity
+        description: Units traded.
         data_tests: [not_null]
+      - name: price
+        description: Price per unit in EUR.
+        data_tests: [not_null]
+      - name: fees
+        description: Fees paid in EUR, 0 when empty.
+        data_tests: [not_null]
+      - name: loaded_at
+        description: When this version of the record was loaded into raw.
 
   - name: stg_eodhd__prices
     description: End-of-day prices per EODHD symbol.
     columns:
-      - name: close_price
+      - name: symbol
+        description: EODHD symbol, e.g. EUNL.XETRA.
         data_tests: [not_null]
+      - name: price_date
+        description: Trading day.
+        data_tests: [not_null]
+      - name: close_price
+        description: Quoted closing price, used for market value.
+        data_tests: [not_null]
+      - name: adjusted_close_price
+        description: Closing price adjusted for splits and dividends. Kept for reference.

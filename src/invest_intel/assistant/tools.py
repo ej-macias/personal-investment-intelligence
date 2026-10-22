@@ -15,6 +15,10 @@ from typing import Any
 
 from invest_intel.analytics import queries
 
+# Never sent to the API: for Indexa the account id is the account number. The dashboards still
+# show it, since they read the same queries directly.
+PRIVATE_FIELDS = frozenset({"account_id"})
+
 _DATE = {"type": "string", "description": "ISO date, YYYY-MM-DD."}
 _FREQUENCY = {
     "type": "string",
@@ -122,13 +126,22 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
 }
 
 
+def _redact(value: Any) -> Any:
+    """Drop PRIVATE_FIELDS from a query result (a row or a list of rows)."""
+    if isinstance(value, list):
+        return [_redact(v) for v in value]
+    if isinstance(value, dict):
+        return {k: v for k, v in value.items() if k not in PRIVATE_FIELDS}
+    return value
+
+
 def run_tool(name: str, args: dict[str, Any]) -> tuple[str, bool]:
     """Execute a tool and return (JSON result or error message, is_error)."""
     handler = HANDLERS.get(name)
     if handler is None:
         return f"Unknown tool: {name}", True
     try:
-        return json.dumps(handler(args or {}), default=str), False
+        return json.dumps(_redact(handler(args or {})), default=str), False
     except (ValueError, TypeError) as exc:
         return f"Invalid arguments: {exc}", True
     except Exception as exc:  # noqa: BLE001 - report the failure to the model, not the details
