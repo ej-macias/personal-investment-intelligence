@@ -7,7 +7,7 @@ DBT = cd dbt && DBT_PROFILES_DIR=. dbt
 
 setup:
 	python -m venv .venv
-	.venv/bin/pip install -e ".[dbt,dev]"
+	.venv/bin/pip install -e ".[dbt,semantic,dev]"
 
 db-up:
 	docker compose up -d

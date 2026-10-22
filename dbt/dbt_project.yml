@@ -19,3 +19,6 @@ models:
     marts:
       +schema: gold
       +materialized: table
+    semantic:
+      +schema: gold
+      +materialized: table

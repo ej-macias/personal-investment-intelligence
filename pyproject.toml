@@ -14,6 +14,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dbt = ["dbt-core>=1.10.5", "dbt-postgres>=1.9"]
+# MetricFlow, for querying the semantic layer (dbt/models/semantic). Not needed by the pipeline.
+semantic = ["dbt-metricflow[dbt-postgres]>=0.11"]
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [build-system]

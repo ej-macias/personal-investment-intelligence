@@ -40,10 +40,15 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: pyproject.toml
-      - run: pip install -e ".[dbt,dev]"
+      - run: pip install -e ".[dbt,semantic,dev]"
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest
       - run: python -m invest_intel.synthetic.generate
       - run: dbt build
+        working-directory: dbt
+      # The semantic layer: definitions are valid against the built tables, and a metric answers.
+      - run: mf validate-configs
+        working-directory: dbt
+      - run: mf query --metrics portfolio_value,money_added,gain_pct --group-by metric_time__month --limit 3
         working-directory: dbt
