@@ -241,7 +241,11 @@ and does not pass them to pull requests from forks. The workflows refer to them 
   account number.
 - The app and the assistant use a role that can only `select` from `gold` ([sql/roles.sql](../sql/roles.sql)).
 - Tool arguments are validated; the one dynamic column name comes from a whitelist.
-- The assistant has a per-session question limit, since the demo is open to anyone.
+- The demo is open to anyone, so the assistant's API spend has four layers of protection:
+  an optional access code (`ASSISTANT_ACCESS_CODE`) that strangers don't have; an optional
+  cap on questions per day across all visitors (`ASSISTANT_DAILY_LIMIT`), counted per app
+  process and so reset when Streamlit restarts the app; a per-session question limit; and
+  the Anthropic Console's monthly spend limit on the demo's key, the only hard limit.
 
 ### One-time setup
 
