@@ -17,7 +17,7 @@ The app is for me, to keep track of my own investments. It also has a public dem
 anyone interested can try it, and the code is free to use on GitHub. API keys, passwords and,
 above all, my financial data are never stored in the repository.
 
-- **Private app:** my real accounts, behind a Google login that only lets me in.
+- **Private app:** my real accounts, behind a login that only lets me in.
 - **Demo app:** [invest-intel-demo.streamlit.app](https://invest-intel-demo.streamlit.app), a
   fictional portfolio valued at real market prices.
 
