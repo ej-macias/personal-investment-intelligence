@@ -69,6 +69,8 @@ The model has no database access and never writes SQL. It chooses among seven to
 `get_investment_returns`, `compare_with_benchmark`, `get_monthly_summary`,
 `get_transactions`), each backed by the
 same fixed queries the dashboards use, through a database role that can only read `gold`.
+In the private app, conversations are saved per user and can be reopened later; reopening one
+reads it from the database without calling the API.
 
 ## Run the demo locally
 

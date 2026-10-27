@@ -1,7 +1,7 @@
 import streamlit as st
 
 from invest_intel import config
-from invest_intel.assistant import agent
+from invest_intel.assistant import agent, history
 from invest_intel.assistant.limits import DailyCounter, code_matches
 
 st.title("AI assistant")
@@ -34,6 +34,50 @@ messages = st.session_state.setdefault("assistant_messages", [])
 chat = st.session_state.setdefault("assistant_chat", [])
 limit = int(config.env("ASSISTANT_MAX_QUESTIONS_PER_SESSION", "15"))
 
+
+def _start(new_chat: list[tuple[str, str]], conversation_id: int | None) -> None:
+    """Show another conversation. Its API context is rebuilt only when a question is sent."""
+    st.session_state["assistant_chat"] = new_chat
+    st.session_state["assistant_messages"] = []
+    st.session_state["assistant_conversation_id"] = conversation_id
+    st.rerun()
+
+
+# Saved conversations (private app only): reading them never calls the Anthropic API.
+saving = history.enabled()
+email = (st.user.get("email") or "").lower() if saving else ""
+if saving and email:
+    try:
+        if not st.session_state.get("assistant_purged"):
+            history.purge(email)
+            st.session_state["assistant_purged"] = True
+        saved = history.list_conversations(email)
+    except Exception:  # noqa: BLE001 - history is a convenience; the chat works without it
+        saved = None
+        st.warning("Past conversations are unavailable right now.")
+    if saved is not None:
+        with st.expander("Past conversations"):
+            if saved:
+                labels = {row["id"]: history.label(row) for row in saved}
+                chosen = st.selectbox(
+                    "Conversation",
+                    list(labels),
+                    format_func=labels.get,
+                    label_visibility="collapsed",
+                )
+                left, right = st.columns(2)
+                if left.button("Open", use_container_width=True):
+                    _start(history.load(chosen, email), chosen)
+                if right.button("Delete", use_container_width=True):
+                    history.delete(chosen, email)
+                    if st.session_state.get("assistant_conversation_id") == chosen:
+                        _start([], None)
+                    st.rerun()
+            else:
+                st.caption("Conversations are saved here for 12 months.")
+            if chat and st.button("New conversation", use_container_width=True):
+                _start([], None)
+
 for role, text in chat:
     st.chat_message(role).markdown(text)
 
@@ -43,12 +87,16 @@ if not chat:
         "*Where am I most concentrated?*"
     )
 
-asked = sum(1 for role, _ in chat if role == "user")
+asked = st.session_state.get("assistant_asked", 0)
 question = st.chat_input("Ask about your investments", disabled=asked >= limit)
 if asked >= limit:
     st.info("You have reached the question limit for this session.")
 
 if question:
+    st.session_state["assistant_asked"] = asked + 1
+    if not messages and chat:
+        # A reopened conversation, or one interrupted by an error: earlier turns as plain text.
+        messages.extend(history.api_messages(chat))
     st.chat_message("user").markdown(question)
     chat.append(("user", question))
     if not _daily_counter().try_acquire():
@@ -69,3 +117,10 @@ if question:
             status.update(label="Done", state="complete")
         st.markdown(reply)
     chat.append(("assistant", reply))
+    if saving and email:
+        try:
+            st.session_state["assistant_conversation_id"] = history.save(
+                st.session_state.get("assistant_conversation_id"), email, chat
+            )
+        except Exception:  # noqa: BLE001
+            st.caption("This conversation could not be saved.")

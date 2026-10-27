@@ -244,6 +244,11 @@ and does not pass them to pull requests from forks. The workflows refer to them 
   table name or the Indexa endpoint template, never a URL (the EODHD token travels in it) or an
   account number.
 - The app and the assistant use a role that can only `select` from `gold` ([sql/roles.sql](../sql/roles.sql)).
+- In the private app, the assistant's conversations are saved in `app.assistant_conversations`
+  ([sql/assistant_history.sql](../sql/assistant_history.sql)): the question and answer text,
+  filtered by the logged-in email, deleted after 12 months without use. It is the only table
+  the app's role can write to. Reopening a conversation reads the database only; the API is
+  called when a new question is sent. The demo saves nothing.
 - Tool arguments are validated; the one dynamic column name comes from a whitelist.
 - Tool results never include `account_id` (for Indexa, the account number) before they are sent
   to the Anthropic API. The dashboards still show it.
@@ -256,7 +261,8 @@ and does not pass them to pull requests from forks. The workflows refer to them 
 ### One-time setup
 
 1. **Neon**: create two projects, one private and one for the demo. In each, run the pipeline
-   once, then run `sql/roles.sql` with a generated password.
+   once, then run `sql/roles.sql` with a generated password. In the private project, also run
+   `sql/assistant_history.sql` for the assistant's saved conversations.
 2. **GitHub**: create the environments `private` and `demo`, add their secrets, and restrict
    `private` to the `main` branch (Settings → Environments → Deployment branches). Enable
    secret scanning push protection.
