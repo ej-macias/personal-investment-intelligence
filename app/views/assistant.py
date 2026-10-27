@@ -1,8 +1,12 @@
+import logging
+
 import streamlit as st
 
 from invest_intel import config
 from invest_intel.assistant import agent, history
 from invest_intel.assistant.limits import DailyCounter, code_matches
+
+log = logging.getLogger(__name__)
 
 st.title("AI assistant")
 st.caption(
@@ -52,9 +56,10 @@ if saving and email:
             history.purge(email)
             st.session_state["assistant_purged"] = True
         saved = history.list_conversations(email)
-    except Exception:  # noqa: BLE001 - history is a convenience; the chat works without it
+    except Exception as exc:  # noqa: BLE001 - history is a convenience; the chat works without it
         saved = None
-        st.warning("Past conversations are unavailable right now.")
+        log.warning("Conversation history unavailable: %s: %s", type(exc).__name__, exc)
+        st.warning(f"Past conversations are unavailable right now ({type(exc).__name__}).")
     if saved is not None:
         with st.expander("Past conversations"):
             if saved:
@@ -122,5 +127,6 @@ if question:
             st.session_state["assistant_conversation_id"] = history.save(
                 st.session_state.get("assistant_conversation_id"), email, chat
             )
-        except Exception:  # noqa: BLE001
-            st.caption("This conversation could not be saved.")
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Conversation not saved: %s: %s", type(exc).__name__, exc)
+            st.caption(f"This conversation could not be saved ({type(exc).__name__}).")

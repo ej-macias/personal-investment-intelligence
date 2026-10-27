@@ -40,7 +40,7 @@ request with an access code, to keep API costs under control.
 | Metric definitions | dbt semantic layer (MetricFlow) | [docs/semantic-layer.md](docs/semantic-layer.md) |
 | Query layer | Fixed, parameterised SQL over `gold` | [src/invest_intel/analytics/queries.py](src/invest_intel/analytics/queries.py) |
 | AI assistant | Claude with tool calling | [src/invest_intel/assistant/](src/invest_intel/assistant/) |
-| Front end | Streamlit, Google login | [app/](app/) |
+| Front end | Streamlit, Auth0 login | [app/](app/) |
 | Scheduling and CI | GitHub Actions | [.github/workflows/](.github/workflows/) |
 | Demo data | Fictional portfolio at real EODHD prices | [src/invest_intel/synthetic/generate.py](src/invest_intel/synthetic/generate.py) |
 
@@ -93,21 +93,21 @@ tests and the linter.
 | | Data | Database | App access |
 |---|---|---|---|
 | `demo` | Fictional portfolio at real EODHD prices; Indexa and Airtable are never called | Its own Neon project | Open |
-| `prod` | Real accounts, via the daily pipeline | Private Neon project | Google login, email allowlist |
-| `dev` | Either | Local PostgreSQL | Google login, or use `demo` |
+| `prod` | Real accounts, via the daily pipeline | Private Neon project | Auth0 login, email allowlist |
+| `dev` | Either | Local PostgreSQL | Auth0 login, or use `demo` |
 
 The two deployments share code and nothing else: different databases, different credentials,
 different GitHub environments.
 
 ## Status
 
-The public demo runs end to end: weekly refresh at real prices, dbt models and tests, the
-dashboards and the assistant. The private deployment, on real accounts, is being set up. Still
-to do:
+Both deployments run end to end. The public demo refreshes weekly at real prices; the private
+app, on real accounts, refreshes daily behind a login and keeps the assistant's conversations.
+Still to do:
 
 - [x] Indexa payload fields confirmed against a live account
 - [x] Demo: Neon project, GitHub environment and Streamlit deployment
-- [ ] Private: Airtable base ([fields](docs/architecture.md#airtable-base)), Neon project, GitHub environment and Streamlit deployment
+- [x] Private: Airtable base ([fields](docs/architecture.md#airtable-base)), Neon project, GitHub environment and Streamlit deployment
 - [ ] Model cash transactions (deposits, withdrawals, fees) from Indexa
 - [ ] Multi-currency support (everything is assumed to be EUR)
 - [ ] Evaluation set for the assistant's answers

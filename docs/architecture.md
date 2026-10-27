@@ -18,7 +18,7 @@ all of it and changes or adds the following.
 | Assistant access | Tools call fixed queries through a read-only role limited to `gold` | The model cannot read raw payloads or run arbitrary SQL, even if a prompt asks it to |
 | One query layer | Dashboards and assistant tools call the same functions | A number in a chart and the same number in an answer cannot disagree |
 | Semantic layer | Metrics (value, money invested, gain, gain %, money added, bought, sold) defined once in dbt for MetricFlow; the app keeps its fixed SQL | One definition for ad-hoc analysis, sliceable by time and instrument, without running MetricFlow inside Streamlit ([semantic-layer.md](semantic-layer.md)) |
-| Login | Streamlit's built-in `st.login()` with Google, plus an email allowlist that fails closed | No password handling in the app; works well on a phone |
+| Login | Streamlit's built-in `st.login()` with Auth0 (email and password, sign-ups closed), plus an email allowlist that fails closed | No password handling in the app and no Google account needed; any OpenID Connect provider works by changing the `[auth]` secrets |
 | CI | Runs the synthetic pipeline and `dbt build` against a PostgreSQL service container | Every change is tested end to end without touching real data |
 | Data quality | Every model and column is described and tested; gold models have enforced contracts (declared column types and primary keys); unit tests cover fees, valuing a position before its first price, and leaving contributions out of returns | A change that would alter a gold table's shape, or a calculation, fails in CI instead of in the app |
 
@@ -228,7 +228,7 @@ No secret is stored in the repository. Each one lives in exactly one of these pl
 | `.env` on your machine (git-ignored) | Whatever you need locally | Local runs |
 | GitHub environment `private` | Indexa, Airtable and EODHD tokens; pipeline database role | [pipeline.yml](../.github/workflows/pipeline.yml) |
 | GitHub environment `demo` | Demo database credentials and the EODHD key (shared with `private`; it reads public prices only, so a leak costs quota, not data) | [demo.yml](../.github/workflows/demo.yml) |
-| Streamlit app secrets (private app) | Read-only database role, Anthropic key, Google OAuth client, allowlist | The private app |
+| Streamlit app secrets (private app) | Read-only database role, Anthropic key, Auth0 client, allowlist | The private app |
 | Streamlit app secrets (demo app) | Demo read-only role, Anthropic key | The public demo |
 
 GitHub encrypts environment secrets, never shows them again after saving, masks them in logs
@@ -271,9 +271,14 @@ and does not pass them to pull requests from forks. The workflows refer to them 
 4. **Tokens**: give each the least access that works: an Airtable personal access token with
    only the `data.records:read` scope on that one base, and a pipeline database role separate
    from the app's.
-5. **Google**: create an OAuth client and put it in the private app's `[auth]` secrets
-   ([.streamlit/secrets.toml.example](../.streamlit/secrets.toml.example)).
-6. **Anthropic**: set a monthly spend limit on the API key used by the demo.
+5. **Auth0**: create a Regular Web Application with the callback URL
+   `https://<private-app>.streamlit.app/oauth2callback`; on its Connections tab leave only
+   Username-Password-Authentication on; disable sign-ups on that connection; create your own
+   user and verify its email. Put the domain, client ID and secret in the private app's
+   `[auth]` secrets ([.streamlit/secrets.toml.example](../.streamlit/secrets.toml.example)).
+6. **Streamlit**: the demo runs `app/streamlit_app.py`; the private app runs
+   `app/private_app.py` (Community Cloud allows one app per repository, branch and file).
+7. **Anthropic**: set a monthly spend limit on the API key used by the demo.
 
 ### Things to know
 
