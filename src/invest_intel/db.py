@@ -18,3 +18,11 @@ def query(sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]
     with psycopg.connect("", row_factory=dict_row) as conn:
         conn.read_only = True
         return conn.execute(sql, params or {}).fetchall()
+
+
+def execute(sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Run a writing statement and return any rows it returns. Used only for the assistant's
+    conversation history; the role can write that one table and nothing else."""
+    with psycopg.connect("", row_factory=dict_row) as conn:
+        cursor = conn.execute(sql, params or {})
+        return cursor.fetchall() if cursor.description else []
