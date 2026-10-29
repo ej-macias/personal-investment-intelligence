@@ -566,17 +566,25 @@ models:
         description: Highest accepted share. Empty means no maximum.
         data_type: numeric
       - name: status
-        description: Below minimum, Above maximum or Within range.
+        description: >
+          Below minimum, Above maximum, Within range, or Slightly below minimum / Slightly
+          above maximum when outside by up to 2 points (or a fifth of the limit, if smaller),
+          which needs no action.
         data_type: text
         data_tests:
           - not_null
           - accepted_values:
               arguments:
-                values: [Below minimum, Above maximum, Within range]
+                values:
+                  - Below minimum
+                  - Slightly below minimum
+                  - Within range
+                  - Slightly above maximum
+                  - Above maximum
       - name: amount_to_range
         description: >
           EUR to add (positive) or reduce (negative) to get back to the nearest edge of the
-          range. 0 when within range.
+          range, also when only slightly outside. 0 when within range.
         data_type: numeric
       - name: amount_to_target
         description: EUR to add (positive) or reduce (negative) to reach the target. Empty without a target.

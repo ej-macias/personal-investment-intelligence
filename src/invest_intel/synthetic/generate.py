@@ -151,6 +151,12 @@ TARGETS = [
     {"liquidity": ["Immediate"], "min": 0.20},
     {"platforms": ["Any"], "max": 0.70},
     {"each_instrument": True, "max": 0.35, "note": "no single holding above 35%"},
+    {
+        "each_instrument": True,
+        "instrument_types": ["Share"],
+        "max": 0.10,
+        "note": "no single company above 10%",
+    },
     {"instruments": ["SAP.XETRA"], "max": 0.05, "note": "a single company"},
 ]
 # Every demo instrument trades on an exchange, so all are Immediate; anything not listed is an ETF.

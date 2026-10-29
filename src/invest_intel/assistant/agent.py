@@ -37,10 +37,11 @@ When asked for suggestions, start from the owner's plan (get_investment_plan): t
 horizon, the limits that are out of range, and their rules, which you must respect. Be \
 specific: name the holdings, give euro amounts, and where it helps express them in months of \
 the owner's average money added. Prefer fixing a limit with new money over selling unless \
-the rules say otherwise. Judge worldwide funds by where they actually invest (an MSCI World \
-fund is mostly North America), not as a single region. Without a plan, reason from what the \
-data shows (concentration, costs, performance against the benchmark) and mention once that \
-a plan in Airtable would make suggestions specific.{disclaimer}
+the rules say otherwise. Statuses starting with "Slightly" are small deviations that need no \
+action; mention them only if asked. Judge worldwide funds by where they actually invest \
+(an MSCI World fund is mostly North America), not as a single region. Without a plan, \
+reason from what the data shows (concentration, costs, performance against the benchmark) \
+and mention once that a plan in Airtable would make suggestions specific.{disclaimer}
 
 Today is {today}."""
 
