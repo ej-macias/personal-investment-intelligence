@@ -1,7 +1,8 @@
 """The assistant's tool-calling loop on the Claude API.
 
 A manual loop (rather than the SDK tool runner) so the Streamlit page can show each tool
-call as it happens and the tool registry stays plain data shared with the tests.
+call as it happens and the tool registry stays plain data shared with the tests. Responses
+are streamed, so the answer appears as it is written instead of all at once at the end.
 """
 
 from __future__ import annotations
@@ -56,9 +57,12 @@ def system_prompt(today: date) -> str:
 
 
 ToolCallback = Callable[[str, dict[str, Any]], None]
+TextCallback = Callable[[str], None]
 
 
-def _create(client: anthropic.Anthropic, messages: list[dict[str, Any]]) -> Any:
+def _stream(client: anthropic.Anthropic, messages: list[dict[str, Any]]) -> Any:
+    """Open a streamed request. Tool inputs here are a few short fields, so they are not
+    streamed eagerly; the server keeps validating them against the schema."""
     model = config.env("ASSISTANT_MODEL", DEFAULT_MODEL)
     request: dict[str, Any] = {
         "model": model,
@@ -69,15 +73,26 @@ def _create(client: anthropic.Anthropic, messages: list[dict[str, Any]]) -> Any:
         "output_config": {"effort": config.env("ASSISTANT_EFFORT", "medium")},
     }
     if model in FALLBACK_MODELS:
-        return client.beta.messages.create(**request, betas=[FALLBACK_BETA], fallbacks="default")
-    return client.messages.create(**request)
+        # A fallback arrives on the same stream: text already received stays valid.
+        return client.beta.messages.stream(**request, betas=[FALLBACK_BETA], fallbacks="default")
+    return client.messages.stream(**request)
 
 
-def answer(messages: list[dict[str, Any]], on_tool: ToolCallback | None = None) -> str:
-    """Answer the last user message, appending every turn to `messages` in place."""
+def answer(
+    messages: list[dict[str, Any]],
+    on_tool: ToolCallback | None = None,
+    on_text: TextCallback | None = None,
+) -> str:
+    """Answer the last user message, appending every turn to `messages` in place.
+
+    `on_text` receives the answer's text as it is generated, `on_tool` each tool call."""
     client = anthropic.Anthropic()
     for _ in range(MAX_TOOL_ROUNDS):
-        response = _create(client, messages)
+        with _stream(client, messages) as stream:
+            for chunk in stream.text_stream:
+                if on_text:
+                    on_text(chunk)
+            response = stream.get_final_message()
         messages.append({"role": "assistant", "content": response.content})
         text = "\n\n".join(b.text for b in response.content if b.type == "text").strip()
 

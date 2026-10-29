@@ -111,16 +111,26 @@ if question:
         st.stop()
     messages.append({"role": "user", "content": question})
     with st.chat_message("assistant"):
-        with st.status("Looking at the data…") as status:
-            try:
-                reply = agent.answer(
-                    messages, on_tool=lambda name, args: status.write(f"`{name}` {args or ''}")
-                )
-            except Exception as exc:  # noqa: BLE001 - keep the page usable whatever the API returns
-                reply = f"The assistant is unavailable right now ({type(exc).__name__})."
-                del messages[:]  # a half-finished tool exchange cannot be resent
-            status.update(label="Done", state="complete")
-        st.markdown(reply)
+        status = st.status("Looking at the data…")
+        answer_box = st.empty()
+        streamed: list[str] = []
+
+        def show(chunk: str) -> None:
+            """Show the answer as it is written; the tool calls stay in the status box."""
+            streamed.append(chunk)
+            answer_box.markdown("".join(streamed) + " ▌")
+
+        try:
+            reply = agent.answer(
+                messages,
+                on_tool=lambda name, args: status.write(f"`{name}` {args or ''}"),
+                on_text=show,
+            )
+        except Exception as exc:  # noqa: BLE001 - keep the page usable whatever the API returns
+            reply = f"The assistant is unavailable right now ({type(exc).__name__})."
+            del messages[:]  # a half-finished tool exchange cannot be resent
+        status.update(label="Done", state="complete", expanded=False)
+        answer_box.markdown(reply)
     chat.append(("assistant", reply))
     if saving and email:
         try:
