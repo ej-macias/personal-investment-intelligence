@@ -150,17 +150,19 @@ unit_tests:
           - {isin: A, instrument_name: World ETF}
           - {isin: B, instrument_name: EM ETF}
           - {isin: C, instrument_name: Bond Fund}
+      # Written as SQL: dbt cannot build fixture rows for an array column on Postgres.
       - input: ref('stg_airtable__targets')
-        rows:
-          - {target_id: t1, dimension: asset_class, dimensions_filled: 1, target_values: "{Equity}", min_weight: 0.55, target_weight: 0.60, max_weight: 0.65}
-          - {target_id: t2, dimension: asset_class, dimensions_filled: 1, target_values: "{Fixed income}", min_weight: 0.25, max_weight: 0.35}
-          - {target_id: t3, dimension: region, dimensions_filled: 1, target_values: "{Emerging markets,China}", max_weight: 0.10}
-          - {target_id: t4, dimension: region, dimensions_filled: 1, target_values: "{Any}", max_weight: 0.40}
-          - {target_id: t5, dimension: region, dimensions_filled: 1, target_values: "{Global}"}
-          - {target_id: t6, dimension: instrument, dimensions_filled: 1, target_values: "{Any}", max_weight: 0.50}
-          - {target_id: t7, dimension: liquidity, dimensions_filled: 1, target_values: "{Immediate,Days}", min_weight: 0.20}
-          - {target_id: t8, dimension: platform, dimensions_filled: 1, target_values: "{Any}", max_weight: 0.70}
-          - {target_id: t9, dimension: region, dimensions_filled: 2, target_values: "{Europe}", max_weight: 0.01}
+        format: sql
+        rows: |
+          select 't1'::text as target_id, 'asset_class'::text as dimension, 1 as dimensions_filled, array['Equity']::text[] as target_values, 0.55::numeric as min_weight, 0.60::numeric as target_weight, 0.65::numeric as max_weight, null::text as note
+          union all select 't2'::text as target_id, 'asset_class'::text as dimension, 1 as dimensions_filled, array['Fixed income']::text[] as target_values, 0.25::numeric as min_weight, null::numeric as target_weight, 0.35::numeric as max_weight, null::text as note
+          union all select 't3'::text as target_id, 'region'::text as dimension, 1 as dimensions_filled, array['Emerging markets', 'China']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, 0.10::numeric as max_weight, null::text as note
+          union all select 't4'::text as target_id, 'region'::text as dimension, 1 as dimensions_filled, array['Any']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, 0.40::numeric as max_weight, null::text as note
+          union all select 't5'::text as target_id, 'region'::text as dimension, 1 as dimensions_filled, array['Global']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, null::numeric as max_weight, null::text as note
+          union all select 't6'::text as target_id, 'instrument'::text as dimension, 1 as dimensions_filled, array['Any']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, 0.50::numeric as max_weight, null::text as note
+          union all select 't7'::text as target_id, 'liquidity'::text as dimension, 1 as dimensions_filled, array['Immediate', 'Days']::text[] as target_values, 0.20::numeric as min_weight, null::numeric as target_weight, null::numeric as max_weight, null::text as note
+          union all select 't8'::text as target_id, 'platform'::text as dimension, 1 as dimensions_filled, array['Any']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, 0.70::numeric as max_weight, null::text as note
+          union all select 't9'::text as target_id, 'region'::text as dimension, 2 as dimensions_filled, array['Europe']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, 0.01::numeric as max_weight, null::text as note
     expect:
       rows:
         - {target_id: t1, label: Equity, status: Above maximum, amount_to_range: "-1000.00", amount_to_target: "-1500.00"}
