@@ -4,6 +4,7 @@ from datetime import date, timedelta
 import pytest
 
 from invest_intel.ingestion import bronze
+from invest_intel.ingestion.airtable import IDS_KEY
 from invest_intel.synthetic.generate import INSTRUMENTS, SYMBOLS, generate
 
 TODAY = date(2026, 1, 15)
@@ -24,7 +25,9 @@ def test_target_weights_sum_to_one():
 def test_never_sells_more_than_held():
     tables = generate(TODAY)
     held = defaultdict(float)
-    for _, _, payload in tables["airtable_transactions"]:
+    for _, record_id, payload in tables["airtable_transactions"]:
+        if record_id == IDS_KEY:
+            continue
         fields = payload["fields"]
         held[fields["isin"]] += (
             fields["quantity"] if fields["type"] == "buy" else -fields["quantity"]
@@ -92,3 +95,23 @@ def test_real_prices_require_every_symbol():
     del prices[SYMBOLS[-1]]
     with pytest.raises(ValueError, match=SYMBOLS[-1]):
         generate(date(2026, 2, 6), prices=prices)
+
+
+def test_airtable_tables_list_their_current_ids():
+    tables = generate(TODAY)
+    for name in (
+        "airtable_instruments",
+        "airtable_transactions",
+        "airtable_plan",
+        "airtable_targets",
+    ):
+        records = [key for _, key, _ in tables[name] if key != IDS_KEY]
+        ((ids,),) = [(p["ids"],) for _, key, p in tables[name] if key == IDS_KEY]
+        assert ids == sorted(records)
+
+
+def test_demo_targets_link_to_demo_instruments():
+    tables = generate(TODAY)
+    instrument_ids = {key for _, key, _ in tables["airtable_instruments"]}
+    for _, _, payload in tables["airtable_targets"]:
+        assert set(payload.get("fields", {}).get("instruments", [])) <= instrument_ids

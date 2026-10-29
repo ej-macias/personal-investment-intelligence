@@ -83,6 +83,9 @@ models:
         description: True for the instrument the portfolio is compared against. Never counted as a holding.
         data_type: boolean
         data_tests: [not_null]
+      - name: yearly_fee_pct
+        description: The fund's yearly fee (TER) as a fraction, 0.002 for 0.20%. Empty when not recorded.
+        data_type: numeric
 
   - name: fct_transactions
     description: One row per buy or sell, from Indexa and from Airtable, in one shape.
@@ -300,6 +303,9 @@ models:
       - name: return_pct
         description: Total gain as a share of everything ever bought. 0.10 means 10%.
         data_type: numeric
+      - name: yearly_fee
+        description: What the fund charges per year at today's value, in EUR. Empty when its fee is not recorded.
+        data_type: numeric
       - name: is_price_estimated
         description: True when there is no price yet and the value is what it cost.
         data_type: boolean
@@ -495,3 +501,86 @@ models:
         description: How far below its highest point the portfolio is today. 0 means at a high.
         data_type: numeric
         data_tests: [not_null]
+
+  - name: investment_plan
+    description: >
+      The owner's plan in one row: goal, horizon and rules from Airtable, and the money actually
+      added per month on average over the last 12 complete months. Empty without a plan.
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: goal
+        description: What the money is for.
+        data_type: text
+      - name: horizon_year
+        description: The year the money is expected to be needed.
+        data_type: integer
+      - name: rules
+        description: The owner's own investing rules, one per line.
+        data_type: text
+      - name: avg_money_added_12m
+        description: Average money put in minus taken out per month, last 12 complete months.
+        data_type: numeric
+
+  - name: target_checks
+    description: >
+      The owner's limits checked against today's portfolio. One row per limit; a limit on Any
+      value becomes one row per held value, except values with a limit of their own.
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: check_key
+        description: Unique key, from the Airtable row and the value it applies to.
+        data_type: text
+        constraints: [{type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: target_id
+        description: The Airtable targets row.
+        data_type: text
+        data_tests: [not_null]
+      - name: dimension
+        description: asset_class, region, instrument_type, liquidity, platform or instrument.
+        data_type: text
+        data_tests: [not_null]
+      - name: applies_to_each
+        description: True when this row comes from an Any limit (or each_instrument).
+        data_type: boolean
+        data_tests: [not_null]
+      - name: label
+        description: What the limit covers, e.g. "Emerging markets, China" or a fund's name.
+        data_type: text
+      - name: current_value
+        description: Today's value of what the limit covers, in EUR.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: current_weight
+        description: Today's share of the portfolio. 0.25 means 25%.
+        data_type: numeric
+      - name: min_weight
+        description: Lowest accepted share. Empty means no minimum.
+        data_type: numeric
+      - name: target_weight
+        description: Where the owner aims to be; the middle of the range when only min and max are set.
+        data_type: numeric
+      - name: max_weight
+        description: Highest accepted share. Empty means no maximum.
+        data_type: numeric
+      - name: status
+        description: Below minimum, Above maximum or Within range.
+        data_type: text
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [Below minimum, Above maximum, Within range]
+      - name: amount_to_range
+        description: >
+          EUR to add (positive) or reduce (negative) to get back to the nearest edge of the
+          range. 0 when within range.
+        data_type: numeric
+      - name: amount_to_target
+        description: EUR to add (positive) or reduce (negative) to reach the target. Empty without a target.
+        data_type: numeric
+      - name: note
+        description: Why the limit exists, in the owner's words.
+        data_type: text

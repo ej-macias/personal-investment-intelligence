@@ -21,6 +21,7 @@ from typing import Any
 
 from invest_intel import config, db
 from invest_intel.ingestion import bronze, eodhd
+from invest_intel.ingestion.airtable import IDS_KEY
 from invest_intel.ingestion.bronze import Row
 from invest_intel.ingestion.run import _describe
 
@@ -123,6 +124,35 @@ BENCHMARK = (
 SYMBOLS = [i[2] for i in INSTRUMENTS] + [BENCHMARK[2]]
 # The labels Indexa's API uses (in Spanish), so the demo exercises the same mapping as real data.
 INDEXA_OPERATIONS = {"buy": "SUSCRIPCIÓN FONDOS INVERSIÓN", "sell": "REEMBOLSO FONDOS INVERSIÓN"}
+# Approximate yearly fees (TER) as fractions, from the funds' factsheets; ETCs and shares have none.
+FEES = {
+    "EUNL.XETRA": 0.0020,
+    "IS3N.XETRA": 0.0018,
+    "EUNH.XETRA": 0.0009,
+    "IUSN.XETRA": 0.0035,
+    "QDVE.XETRA": 0.0015,
+    "V80A.XETRA": 0.0025,
+}
+# A fictional plan and limits, one of each kind of Airtable targets row (docs/architecture.md).
+PLAN = {
+    "goal": "Long-term savings for retirement (demo)",
+    "horizon_year": 2050,
+    "rules": (
+        "Invest new money before selling anything.\nPrefer funds with yearly fees under 0.30%."
+    ),
+}
+TARGETS = [
+    {"asset_classes": ["Equity"], "min": 0.60, "target": 0.70, "max": 0.80},
+    {"asset_classes": ["Fixed income"], "min": 0.15, "target": 0.20, "max": 0.30},
+    {"asset_classes": ["Commodities"], "max": 0.10, "note": "gold as a hedge only"},
+    {"regions": ["Any"], "max": 0.40, "note": "no single region dominates"},
+    {"regions": ["Global"], "note": "worldwide funds are already spread out"},
+    {"regions": ["Emerging"], "max": 0.15, "note": "higher risk"},
+    {"liquidity": ["Immediate"], "min": 0.20},
+    {"platforms": ["Any"], "max": 0.70},
+    {"each_instrument": True, "max": 0.35, "note": "no single holding above 35%"},
+    {"instruments": ["SAP.XETRA"], "max": 0.05, "note": "a single company"},
+]
 # Every demo instrument trades on an exchange, so all are Immediate; anything not listed is an ETF.
 INSTRUMENT_TYPES = {"4GLD.XETRA": "ETC", "SAP.XETRA": "Share"}
 
@@ -212,10 +242,26 @@ def generate(
             "liquidity": "Immediate",
             "currency": "EUR",
         }
+        if symbol in FEES:
+            fields["ter"] = FEES[symbol]
         if is_benchmark:  # Airtable omits unchecked checkboxes
             fields["is_benchmark"] = True
         tables["airtable_instruments"].append(
             ("instruments", f"recINS{n:04d}", {"id": f"recINS{n:04d}", "fields": fields})
+        )
+
+    record_ids = {
+        payload["fields"]["eodhd_symbol"]: record_id
+        for _, record_id, payload in tables["airtable_instruments"]
+    }
+    tables["airtable_plan"].append(("plan", "recPLN0000", {"id": "recPLN0000", "fields": PLAN}))
+    for n, target in enumerate(TARGETS):
+        fields = dict(target)
+        if "instruments" in fields:  # a link field holds Airtable record ids
+            fields["instruments"] = [record_ids[s] for s in fields["instruments"]]
+        record_id = f"recTGT{n:04d}"
+        tables["airtable_targets"].append(
+            ("targets", record_id, {"id": record_id, "fields": fields})
         )
 
     holdings = {i[0]: 0.0 for i in INSTRUMENTS}
@@ -288,6 +334,17 @@ def generate(
         "instrument_accounts": [{"positions": positions}],
     }
     tables["indexa_portfolio"].append((INDEXA_ACCOUNT, last_day.isoformat(), snapshot))
+
+    # Like the real ingestion: each Airtable table also lists the record ids it has now.
+    for name in (
+        "airtable_instruments",
+        "airtable_transactions",
+        "airtable_plan",
+        "airtable_targets",
+    ):
+        entity = tables[name][0][0]
+        ids = sorted(record_id for _, record_id, _ in tables[name])
+        tables[name].append((entity, IDS_KEY, {"ids": ids}))
     return tables
 
 

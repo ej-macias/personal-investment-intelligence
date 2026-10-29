@@ -69,6 +69,20 @@ def _get_monthly_summary(_: dict[str, Any]) -> Any:
     }
 
 
+def _get_investment_plan(_: dict[str, Any]) -> Any:
+    plan = queries.investment_plan()
+    checks = queries.target_checks()
+    fees = [r["yearly_fee"] for r in queries.investment_returns() if r.get("yearly_fee")]
+    return {
+        "plan": plan or None,
+        "target_checks": checks,
+        "total_yearly_fees": round(sum(fees), 2) if fees else None,
+        "note": None
+        if plan or checks
+        else "No plan or targets in Airtable yet; suggestions can only be general.",
+    }
+
+
 def _tool(name: str, description: str, properties: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "name": name,
@@ -112,6 +126,15 @@ TOOLS: list[dict[str, Any]] = [
         {"start_date": _DATE, "frequency": _FREQUENCY},
     ),
     _tool(
+        "get_investment_plan",
+        "The owner's own plan: goal, horizon year, personal rules, average money added per "
+        "month over the last year, and each of their limits (min / target / max share of the "
+        "portfolio by asset class, region, type, liquidity, platform or holding) checked "
+        "against today: status, and euros to add or reduce to get within range and to reach "
+        "the target. Also the total yearly fund fees in EUR. Call this first for any request "
+        "for suggestions, rebalancing, where to put new money, risk or costs.",
+    ),
+    _tool(
         "get_monthly_summary",
         "Your annual return (the yearly rate your own money has earned, given when you added "
         "it; null with under 3 months of history), month-by-month value, money added, gain "
@@ -138,6 +161,7 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "get_asset_allocation": _get_asset_allocation,
     "get_investment_returns": _get_investment_returns,
     "compare_with_benchmark": _compare_with_benchmark,
+    "get_investment_plan": _get_investment_plan,
     "get_monthly_summary": _get_monthly_summary,
     "get_transactions": _get_transactions,
 }

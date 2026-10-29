@@ -60,3 +60,13 @@ def monthly() -> pd.DataFrame:
 @st.cache_data(ttl=TTL)
 def highlights() -> dict:
     return queries.highlights()
+
+
+@st.cache_data(ttl=TTL)
+def plan() -> dict:
+    return queries.investment_plan()
+
+
+@st.cache_data(ttl=TTL)
+def target_checks() -> pd.DataFrame:
+    return pd.DataFrame(queries.target_checks())

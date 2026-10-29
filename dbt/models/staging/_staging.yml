@@ -103,6 +103,51 @@ models:
       - name: is_benchmark
         description: True for the benchmark. False when the checkbox is not ticked.
         data_tests: [not_null]
+      - name: ter
+        description: The fund's yearly fee as a fraction (0.002 for 0.20%). Empty when not recorded.
+
+  - name: stg_airtable__plan
+    description: The owner's plan from Airtable (normally one row).
+    columns:
+      - name: plan_id
+        description: Airtable's id for the row.
+        data_tests: [unique, not_null]
+      - name: goal
+        description: What the money is for.
+      - name: horizon_year
+        description: The year the money is expected to be needed.
+      - name: rules
+        description: The owner's own investing rules, one per line, as written.
+      - name: loaded_at
+        description: When this version of the row was loaded.
+
+  - name: stg_airtable__targets
+    description: >
+      The owner's limits from Airtable, one row per limit. The filled "what" field gives the
+      dimension; "Any" means every value separately.
+    columns:
+      - name: target_id
+        description: Airtable's id for the row.
+        data_tests: [unique, not_null]
+      - name: dimension
+        description: asset_class, region, instrument_type, liquidity, platform or instrument.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [asset_class, region, instrument_type, liquidity, platform, instrument]
+      - name: dimensions_filled
+        description: How many "what" fields the row fills; only rows with exactly one are used.
+        data_tests: [not_null]
+      - name: target_values
+        description: The values the limit covers (ISINs for instruments), or Any.
+      - name: min_weight
+        description: Lowest accepted share of the portfolio, as a fraction. Empty means no minimum.
+      - name: target_weight
+        description: Where the owner aims to be, as a fraction. Optional.
+      - name: max_weight
+        description: Highest accepted share of the portfolio, as a fraction. Empty means no maximum.
+      - name: note
+        description: Why the limit exists, in the owner's words.
 
   - name: stg_airtable__transactions
     description: Buys and sells outside Indexa, entered by hand in Airtable.

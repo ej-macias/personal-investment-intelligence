@@ -34,6 +34,8 @@ select
     l.market_value,
     l.market_value - l.net_invested as total_gain,
     (l.market_value - l.net_invested) / nullif(b.total_bought, 0) as return_pct,
+    -- What the fund charges per year at today's value; empty when its fee is not recorded.
+    round(l.market_value * i.yearly_fee_pct, 2) as yearly_fee,
     l.is_price_estimated
 from latest as l
 inner join bought as b on l.account_id = b.account_id and l.isin = b.isin

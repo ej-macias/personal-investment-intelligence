@@ -10,7 +10,8 @@ with described as (
         instrument_type,
         liquidity,
         currency,
-        is_benchmark
+        is_benchmark,
+        ter as yearly_fee_pct
     from {{ ref('stg_airtable__instruments') }}
 ),
 
@@ -36,5 +37,6 @@ select
     'Unclassified'::text as instrument_type,
     'Unclassified'::text as liquidity,
     'EUR'::text as currency,
-    false as is_benchmark
+    false as is_benchmark,
+    null::numeric as yearly_fee_pct
 from undescribed
