@@ -181,8 +181,8 @@ entered: the assistant uses the money actually added per month over the last yea
 
 ### `targets`: your limits (optional)
 
-One row per limit. Each row fills **exactly one** "what" field, plus any of `min`, `target`
-and `max`:
+One row per limit. Each row fills **exactly one** "what" field (`each_instrument` may add one select field to
+narrow it), plus any of `min`, `target` and `max`:
 
 | Field | Airtable type | Meaning |
 |---|---|---|
@@ -192,7 +192,7 @@ and `max`:
 | `liquidity` | Multiple select | Immediate, Days, Restricted, Illiquid, or `Any` |
 | `platforms` | Multiple select | `Indexa Capital` and the `account` names used in `transactions`, or `Any` |
 | `instruments` | Link to `instruments` (several allowed) | Specific holdings; lookup fields are not needed |
-| `each_instrument` | Checkbox | The limit applies to every holding separately |
+| `each_instrument` | Checkbox | The limit applies to every holding separately. It may be combined with one select field to narrow it, e.g. `instrument_types: Share` for "no single company above 10%", which leaves diversified funds out |
 | `min` / `target` / `max` | Percent | Lowest accepted share, where you aim to be, highest accepted share. Each optional. |
 | `note` | Single line text | Why the limit exists; the assistant reads it |
 
@@ -217,15 +217,26 @@ Example rows:
 | | | Any | | ☐ | | | 50% | spread platform risk |
 | | | | | ☑ | | | 20% | no single holding above 20% |
 
+A limit for individual companies only, so that index funds such as a Stoxx 600 or S&P 500 ETF
+are not caught by it: tick `each_instrument` and set `instrument_types` to `Share` (add
+`Private shares` if wanted) with `max` 10%.
+
 The app's Portfolio analysis shows each limit with today's share, the range, the status and
-the euros to add or reduce. The pipeline warns about rows that fill no or several "what"
+the euros to add or reduce. A share outside its range by up to 2 points (or a fifth of the
+limit, if smaller: 0.6 points for a 3% maximum) is shown as "Slightly above maximum" or
+"Slightly below minimum", with no fix suggested; beyond that the row is highlighted in red. The pipeline warns about rows that fill no or several "what"
 fields, ranges out of order, and values that match nothing in your data.
 
 Two optional formula fields make the grid easier to read; the pipeline ignores them. A primary
 field `limit`:
 
 ```
-IF({each_instrument}, "Each holding",
+IF({each_instrument}, "Each holding" &
+    IF({instrument_types}, " (" & {instrument_types} & ")",
+      IF({asset_classes}, " (" & {asset_classes} & ")",
+        IF({regions}, " (" & {regions} & ")",
+          IF({liquidity}, " (" & {liquidity} & ")",
+            IF({platforms}, " (" & {platforms} & ")", ""))))),
   IF({instruments}, {instruments},
     IF({platforms}, "Platform: " & {platforms},
       IF({liquidity}, "Liquidity: " & {liquidity},
@@ -242,10 +253,13 @@ and a `check` field:
 
 ```
 IF(
-  (IF({asset_classes},1,0) + IF({regions},1,0) + IF({instrument_types},1,0) +
-   IF({liquidity},1,0) + IF({platforms},1,0) + IF({instruments},1,0) +
-   IF({each_instrument},1,0)) != 1,
-  "⚠ fill exactly one",
+  IF({each_instrument},
+    OR({instruments},
+       (IF({asset_classes},1,0) + IF({regions},1,0) + IF({instrument_types},1,0) +
+        IF({liquidity},1,0) + IF({platforms},1,0)) > 1),
+    (IF({asset_classes},1,0) + IF({regions},1,0) + IF({instrument_types},1,0) +
+     IF({liquidity},1,0) + IF({platforms},1,0) + IF({instruments},1,0)) != 1),
+  "⚠ check the what fields",
   IF(AND({min}, {max}, {min} > {max}), "⚠ min above max", "✓")
 )
 ```

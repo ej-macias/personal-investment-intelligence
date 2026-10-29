@@ -140,6 +140,10 @@ models:
         data_tests: [not_null]
       - name: target_values
         description: The values the limit covers (ISINs for instruments), or Any.
+      - name: scope_dimension
+        description: For each_instrument rows narrowed by one select field, that field's dimension.
+      - name: scope_values
+        description: The values of that scope, e.g. Share; each_instrument then covers only those holdings.
       - name: min_weight
         description: Lowest accepted share of the portfolio, as a fraction. Empty means no minimum.
       - name: target_weight

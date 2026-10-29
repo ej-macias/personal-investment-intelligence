@@ -51,11 +51,20 @@ def _range(row) -> str:
     return "–"
 
 
+# Only clearly out-of-range limits get a fix and a red row; "Slightly …" needs no action.
+OUT_OF_RANGE = {"Above maximum", "Below minimum"}
+
+
 def _fix(row) -> str:
     amount = row["amount_to_range"]
-    if pd.isna(amount) or amount == 0:
+    if row["status"] not in OUT_OF_RANGE or pd.isna(amount) or amount == 0:
         return ""
     return f"add €{amount:,.0f}" if amount > 0 else f"reduce by €{-amount:,.0f}"
+
+
+def _highlight(row) -> list[str]:
+    red = "background-color: rgba(255, 75, 75, 0.18)"
+    return [red if row["Status"] in OUT_OF_RANGE else ""] * len(row)
 
 
 checks = data.target_checks()
@@ -68,24 +77,27 @@ if plan or not checks.empty:
     if checks.empty:
         st.info("No limits yet. Add rows to the targets table in Airtable.")
     else:
-        off = checks[checks["status"] != "Within range"]
+        off = checks[checks["status"].isin(OUT_OF_RANGE)]
         st.metric("Limits out of range", f"{len(off)} of {len(checks)}")
         table = pd.DataFrame(
             {
                 "Limit": checks["dimension"].map(DIMENSION_NAMES) + ": " + checks["label"],
-                "Today": checks["current_weight"],
+                "Today": checks["current_weight"] * 100,
                 "Range": checks.apply(_range, axis=1),
-                "Target": checks["target_weight"],
+                "Target": checks["target_weight"] * 100,
                 "Status": checks["status"],
                 "To fix": checks.apply(_fix, axis=1),
             }
         )
         st.dataframe(
-            table,
+            table.style.apply(_highlight, axis=1),
             hide_index=True,
             column_config={
-                "Today": st.column_config.NumberColumn(format="percent"),
-                "Target": st.column_config.NumberColumn(format="percent"),
+                "Limit": st.column_config.TextColumn(width="medium"),
+                "Today": st.column_config.NumberColumn(format="%.0f%%"),
+                "Target": st.column_config.NumberColumn(format="%.0f%%"),
+                "Status": st.column_config.TextColumn(width="medium"),
+                "To fix": st.column_config.TextColumn(width="medium"),
             },
         )
 

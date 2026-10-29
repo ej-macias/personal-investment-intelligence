@@ -2,6 +2,8 @@
 -- value (or each_instrument) becomes one row per held value, except values that have a
 -- single-value limit of their own, which overrides it.
 -- Weights are shares of the whole portfolio: 0.6 means 60%.
+-- A share just outside its range (by up to 2 points, or a fifth of the limit for small
+-- limits) is "slightly" off: worth knowing, not worth acting on.
 with holdings as (
     select * from {{ ref('asset_allocation') }}
 ),
@@ -87,6 +89,20 @@ each_value_checks as (
       and not exists (
           select 1 from own_limit as o where o.dimension = d.dimension and o.value = d.value
       )
+      -- each_instrument narrowed to e.g. shares only: holdings outside the scope are skipped.
+      and (
+          l.scope_dimension is null
+          or exists (
+              select 1
+              from holdings as h
+              where h.isin = d.value
+                and case l.scope_dimension
+                    {% for dimension in dimensions %}
+                    when '{{ dimension }}' then h.{{ dimension }}
+                    {% endfor %}
+                end = any(l.scope_values)
+          )
+      )
 ),
 
 checks as (
@@ -110,6 +126,23 @@ weighted as (
         t.portfolio_value
     from checks as c
     cross join total as t
+),
+
+judged as (
+    select
+        *,
+        case
+            when min_weight is not null and current_weight < min_weight - least(0.02, 0.2 * min_weight)
+                then 'Below minimum'
+            when min_weight is not null and current_weight < min_weight
+                then 'Slightly below minimum'
+            when max_weight is not null and current_weight > max_weight + least(0.02, 0.2 * max_weight)
+                then 'Above maximum'
+            when max_weight is not null and current_weight > max_weight
+                then 'Slightly above maximum'
+            else 'Within range'
+        end as status
+    from weighted
 )
 
 select
@@ -123,11 +156,7 @@ select
     min_weight,
     aim_weight as target_weight,
     max_weight,
-    case
-        when min_weight is not null and current_weight < min_weight then 'Below minimum'
-        when max_weight is not null and current_weight > max_weight then 'Above maximum'
-        else 'Within range'
-    end as status,
+    status,
     round(
         case
             when min_weight is not null and current_weight < min_weight
@@ -140,4 +169,4 @@ select
     ) as amount_to_range,
     round((aim_weight - current_weight) * portfolio_value, 2) as amount_to_target,
     note
-from weighted
+from judged
