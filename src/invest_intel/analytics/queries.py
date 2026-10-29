@@ -87,7 +87,7 @@ def investment_returns() -> Rows:
         """
         select isin, instrument_name, asset_class, instrument_type, platform, account_id,
                quantity::float8, net_invested::float8, market_value::float8, total_gain::float8,
-               return_pct::float8
+               return_pct::float8, yearly_fee::float8
         from gold.investment_returns
         order by market_value desc
         """
@@ -209,3 +209,28 @@ def highlights() -> dict[str, Any]:
         """
     )
     return rows[0] if rows else {}
+
+
+def investment_plan() -> dict[str, Any]:
+    """The owner's goal, horizon and rules, and the average money added per month."""
+    rows = db.query(
+        """
+        select goal, horizon_year, rules, avg_money_added_12m::float8
+        from gold.investment_plan
+        """
+    )
+    return rows[0] if rows else {}
+
+
+def target_checks() -> Rows:
+    """The owner's limits against today's portfolio: status and euros to fix."""
+    return db.query(
+        """
+        select dimension, label, applies_to_each, current_value::float8,
+               current_weight::float8, min_weight::float8, target_weight::float8,
+               max_weight::float8, status, amount_to_range::float8, amount_to_target::float8,
+               note
+        from gold.target_checks
+        order by dimension, applies_to_each, label
+        """
+    )

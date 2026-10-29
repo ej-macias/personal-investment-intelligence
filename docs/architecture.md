@@ -35,6 +35,8 @@ Columns in every table: `id, run_id, loaded_at, entity, record_key, payload, pay
 | `indexa_cash_transactions` | account number | transaction reference |
 | `airtable_instruments` | Airtable table | record id |
 | `airtable_transactions` | Airtable table | record id |
+| `airtable_plan` | Airtable table | record id |
+| `airtable_targets` | Airtable table | record id |
 | `eodhd_prices` | symbol | price date |
 
 ### Silver: schema `silver`
@@ -61,6 +63,8 @@ Columns in every table: `id, run_id, loaded_at, entity, record_key, payload, pay
 | `benchmark_comparison` | benchmark, day | Am I ahead of or behind the market? |
 | `portfolio_monthly` | month | Month-end value, money added, gain and return per month |
 | `portfolio_highlights` | one row | Best and worst month, share of months with a gain, biggest drop from a high |
+| `investment_plan` | one row | The owner's goal, horizon and rules, and money added per month on average |
+| `target_checks` | limit (and value, for Any limits) | Each limit from the targets table against today: status and euros to fix |
 
 Candidates for later: `fct_cash_flows` (deposits, withdrawals, fees), `portfolio_performance_monthly`,
 `allocation_drift` against target weights, and a money-weighted return per account.
@@ -75,14 +79,19 @@ Candidates for later: `fct_cash_flows` (deposits, withdrawals, fees), `portfolio
 
 ## Airtable base
 
-One Airtable base holds the two tables the pipeline cannot get from an API. You create them by
-hand; the pipeline only reads them. Both must exist, even if `transactions` is empty, because
-they are fetched together and a missing table fails the whole Airtable step.
+One Airtable base holds what the pipeline cannot get from an API. You create the tables by
+hand; the pipeline only reads them. `instruments` and `transactions` must exist, even if
+`transactions` is empty: a missing one fails the whole Airtable step. `plan` and `targets` are
+optional and skipped when missing.
+
+Deleting a row in Airtable removes it from the app on the next run: every run also records
+which rows each table has, and rows no longer listed are left out (the raw history keeps them).
 
 Field names are read exactly as written: lowercase, in English (`isin`, not `ISIN`). A field
 with any other name is silently ignored. The table names may differ from `instruments` and
 `transactions` if you set the `AIRTABLE_INSTRUMENTS_TABLE` and `AIRTABLE_TRANSACTIONS_TABLE`
-variables of the `private` GitHub environment (names or `tbl…` IDs).
+variables of the `private` GitHub environment (names or `tbl…` IDs); likewise
+`AIRTABLE_PLAN_TABLE` and `AIRTABLE_TARGETS_TABLE`.
 
 ### `instruments`: what each instrument is
 
@@ -102,6 +111,7 @@ price. Rows without an `isin` are ignored.
 | `liquidity` | Single select | Recommended | How quickly it can be turned into cash. Groups the allocation by liquidity, to see how much is available at short notice. Empty shows as "Unclassified". Values below. | `Immediate` |
 | `currency` | Single line text | No | Currency of the listing you trade, not the fund's base currency (an ETF with "USD" in its name bought on Xetra trades in EUR). Only EUR is supported for now, which is also the default, so it can be left empty. | `EUR` |
 | `is_benchmark` | Checkbox | No | Tick on the one instrument you compare the portfolio against. It is priced but never counted as a holding. See [Choosing a benchmark](#choosing-a-benchmark). | ☐ |
+| `ter` | Percent | No | The fund's yearly fee (TER), from its factsheet or justETF. Shown as a yearly cost in euros and used by the assistant. Empty for shares and anything without a fee. | `0.20%` |
 
 `instrument_type` values:
 
@@ -155,6 +165,90 @@ Example row, a buy of the ETF above:
 
 The pipeline records this buy as €985.50 invested (10 × 98.40 + 1.50). From 2 March on, the
 position is 10 units valued at each day's `EUNL.XETRA` close.
+
+### `plan`: what the money is for (optional)
+
+One row, edited when the plan changes. The assistant reads it before making any suggestion.
+
+| Field | Airtable type | Meaning | Example |
+|---|---|---|---|
+| `goal` | Single line or long text (primary field) | What the money is for. | Retirement savings, plus a flat deposit in about 8 years |
+| `horizon_year` | Number | The year the money is expected to be needed. | `2050` |
+| `rules` | Long text | Your own investing rules, one instruction per line, for things a range cannot express. The assistant respects them in every suggestion. | Invest new money before selling anything. |
+
+Numeric limits belong in `targets`, where they are checked exactly. Contributions are not
+entered: the assistant uses the money actually added per month over the last year.
+
+### `targets`: your limits (optional)
+
+One row per limit. Each row fills **exactly one** "what" field, plus any of `min`, `target`
+and `max`:
+
+| Field | Airtable type | Meaning |
+|---|---|---|
+| `asset_classes` | Multiple select | Asset classes, spelt as in `instruments`, or `Any` |
+| `regions` | Multiple select | Regions, spelt as in `instruments`, or `Any` |
+| `instrument_types` | Multiple select | ETF, ETC, Index fund, Pension plan, Share, Private shares, Crypto, or `Any` |
+| `liquidity` | Multiple select | Immediate, Days, Restricted, Illiquid, or `Any` |
+| `platforms` | Multiple select | `Indexa Capital` and the `account` names used in `transactions`, or `Any` |
+| `instruments` | Link to `instruments` (several allowed) | Specific holdings; lookup fields are not needed |
+| `each_instrument` | Checkbox | The limit applies to every holding separately |
+| `min` / `target` / `max` | Percent | Lowest accepted share, where you aim to be, highest accepted share. Each optional. |
+| `note` | Single line text | Why the limit exists; the assistant reads it |
+
+How a row is read:
+- **Several values** count together: `Emerging markets` + `China` max 15% limits their sum.
+- **`Any`** (or `each_instrument`) applies the limit to every value separately: `platforms: Any`
+  max 50% means no platform above 50%.
+- **A value with its own single-value row** is left out of that dimension's `Any` row. For
+  example, `regions: Global` with no numbers exempts worldwide funds from `regions: Any` max 40%.
+- **Only a max (or only a min)** is a ceiling (or floor) with no target. With min and max and no
+  target, the target is the middle of the range.
+
+Example rows:
+
+| asset_classes | regions | platforms | instruments | each_instrument | min | target | max | note |
+|---|---|---|---|---|---|---|---|---|
+| Equity | | | | ☐ | 55% | 60% | 65% | |
+| Crypto | | | | ☐ | | 2% | 3% | speculative, keep small |
+| | Emerging markets, China | | | ☐ | 5% | 10% | 15% | |
+| | Any | | | ☐ | | | 40% | no single region dominates |
+| | Global | | | ☐ | | | | worldwide funds are already spread out |
+| | | Any | | ☐ | | | 50% | spread platform risk |
+| | | | | ☑ | | | 20% | no single holding above 20% |
+
+The app's Portfolio analysis shows each limit with today's share, the range, the status and
+the euros to add or reduce. The pipeline warns about rows that fill no or several "what"
+fields, ranges out of order, and values that match nothing in your data.
+
+Two optional formula fields make the grid easier to read; the pipeline ignores them. A primary
+field `limit`:
+
+```
+IF({each_instrument}, "Each holding",
+  IF({instruments}, {instruments},
+    IF({platforms}, "Platform: " & {platforms},
+      IF({liquidity}, "Liquidity: " & {liquidity},
+        IF({instrument_types}, "Type: " & {instrument_types},
+          IF({regions}, "Region: " & {regions},
+            IF({asset_classes}, {asset_classes}, "⚠ nothing selected")))))))
+& ": " &
+IF(AND({min}, {max}), ROUND({min} * 100, 1) & "–" & ROUND({max} * 100, 1) & "%",
+  IF({max}, "max " & ROUND({max} * 100, 1) & "%",
+    IF({min}, "min " & ROUND({min} * 100, 1) & "%", "no range")))
+```
+
+and a `check` field:
+
+```
+IF(
+  (IF({asset_classes},1,0) + IF({regions},1,0) + IF({instrument_types},1,0) +
+   IF({liquidity},1,0) + IF({platforms},1,0) + IF({instruments},1,0) +
+   IF({each_instrument},1,0)) != 1,
+  "⚠ fill exactly one",
+  IF(AND({min}, {max}, {min} > {max}), "⚠ min above max", "✓")
+)
+```
 
 ### Classifying instruments
 

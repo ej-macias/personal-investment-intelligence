@@ -23,6 +23,8 @@ RAW_TABLES = (
     "indexa_cash_transactions",
     "airtable_instruments",
     "airtable_transactions",
+    "airtable_plan",
+    "airtable_targets",
     "eodhd_prices",
 )
 

@@ -1,4 +1,4 @@
-with source as {{ latest_records(source('raw', 'airtable_transactions')) }}
+with source as {{ airtable_current(source('raw', 'airtable_transactions')) }}
 
 select
     coalesce(payload -> 'fields' ->> 'account', 'Manual') as account_id,

@@ -33,6 +33,9 @@ jobs:
       # Table names or tbl… IDs, as environment variables (not secrets) of `private`.
       AIRTABLE_INSTRUMENTS_TABLE: ${{ vars.AIRTABLE_INSTRUMENTS_TABLE || 'instruments' }}
       AIRTABLE_TRANSACTIONS_TABLE: ${{ vars.AIRTABLE_TRANSACTIONS_TABLE || 'transactions' }}
+      # Optional tables: skipped when they don't exist.
+      AIRTABLE_PLAN_TABLE: ${{ vars.AIRTABLE_PLAN_TABLE || 'plan' }}
+      AIRTABLE_TARGETS_TABLE: ${{ vars.AIRTABLE_TARGETS_TABLE || 'targets' }}
       EODHD_API_TOKEN: ${{ secrets.EODHD_API_TOKEN }}
       DBT_PROFILES_DIR: .
     steps:

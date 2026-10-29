@@ -30,6 +30,65 @@ else:
     )
     st.caption(f"Benchmark: {last['benchmark_name']}")
 
+DIMENSION_NAMES = {
+    "asset_class": "Asset class",
+    "region": "Region",
+    "instrument_type": "Type",
+    "liquidity": "Liquidity",
+    "platform": "Platform",
+    "instrument": "Holding",
+}
+
+
+def _range(row) -> str:
+    low, high = row["min_weight"], row["max_weight"]
+    if pd.notna(low) and pd.notna(high):
+        return f"{low:.0%}–{high:.0%}"
+    if pd.notna(high):
+        return f"max {high:.0%}"
+    if pd.notna(low):
+        return f"min {low:.0%}"
+    return "–"
+
+
+def _fix(row) -> str:
+    amount = row["amount_to_range"]
+    if pd.isna(amount) or amount == 0:
+        return ""
+    return f"add €{amount:,.0f}" if amount > 0 else f"reduce by €{-amount:,.0f}"
+
+
+checks = data.target_checks()
+plan = data.plan()
+if plan or not checks.empty:
+    st.subheader("Your plan vs today")
+    if plan.get("goal"):
+        horizon = f" · by {plan['horizon_year']}" if plan.get("horizon_year") else ""
+        st.caption(f"{plan['goal']}{horizon}")
+    if checks.empty:
+        st.info("No limits yet. Add rows to the targets table in Airtable.")
+    else:
+        off = checks[checks["status"] != "Within range"]
+        st.metric("Limits out of range", f"{len(off)} of {len(checks)}")
+        table = pd.DataFrame(
+            {
+                "Limit": checks["dimension"].map(DIMENSION_NAMES) + ": " + checks["label"],
+                "Today": checks["current_weight"],
+                "Range": checks.apply(_range, axis=1),
+                "Target": checks["target_weight"],
+                "Status": checks["status"],
+                "To fix": checks.apply(_fix, axis=1),
+            }
+        )
+        st.dataframe(
+            table,
+            hide_index=True,
+            column_config={
+                "Today": st.column_config.NumberColumn(format="percent"),
+                "Target": st.column_config.NumberColumn(format="percent"),
+            },
+        )
+
 st.subheader("Month by month")
 monthly = data.monthly()
 if monthly.empty:

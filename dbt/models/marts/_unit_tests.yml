@@ -117,3 +117,63 @@ unit_tests:
           biggest_drop_from: 2026-02-01
           biggest_drop_to: 2026-03-01
           below_high_pct: "-0.1000000000"
+
+  - name: airtable_rows_deleted_in_airtable_drop_out
+    model: stg_airtable__plan
+    description: >
+      Raw tables keep every version, but only records in the table's latest id list count, so
+      a row deleted in Airtable disappears on the next run.
+    given:
+      - input: source('raw', 'airtable_plan')
+        rows:
+          - {id: 1, entity: Plan, record_key: recOLD, loaded_at: "2026-01-01 05:00:00", payload: '{"fields": {"goal": "Deleted plan"}}'}
+          - {id: 2, entity: Plan, record_key: __ids__, loaded_at: "2026-01-01 05:00:00", payload: '{"ids": ["recOLD"]}'}
+          - {id: 3, entity: Plan, record_key: recNEW, loaded_at: "2026-01-02 05:00:00", payload: '{"fields": {"goal": "Current plan", "horizon_year": 2050}}'}
+          - {id: 4, entity: Plan, record_key: __ids__, loaded_at: "2026-01-02 05:00:00", payload: '{"ids": ["recNEW"]}'}
+    expect:
+      rows:
+        - {plan_id: recNEW, goal: Current plan, horizon_year: 2050}
+
+  - name: limits_are_checked_against_todays_shares
+    model: target_checks
+    description: >
+      Ranges, a group of regions, Any limits expanded per value with an exemption for a value
+      that has its own limit, each_instrument, and a floor-only limit. Portfolio worth 10,000.
+    given:
+      - input: ref('asset_allocation')
+        rows:
+          - {isin: A, instrument_name: World ETF, asset_class: Equity, region: Global, instrument_type: ETF, liquidity: Immediate, platform: Broker, market_value: 6000}
+          - {isin: B, instrument_name: EM ETF, asset_class: Equity, region: Emerging markets, instrument_type: ETF, liquidity: Immediate, platform: Broker, market_value: 1500}
+          - {isin: C, instrument_name: Bond Fund, asset_class: Fixed income, region: Europe, instrument_type: Index fund, liquidity: Days, platform: Indexa Capital, market_value: 2500}
+      - input: ref('dim_instrument')
+        rows:
+          - {isin: A, instrument_name: World ETF}
+          - {isin: B, instrument_name: EM ETF}
+          - {isin: C, instrument_name: Bond Fund}
+      # Written as SQL: dbt cannot build fixture rows for an array column on Postgres.
+      - input: ref('stg_airtable__targets')
+        format: sql
+        rows: |
+          select 't1'::text as target_id, 'asset_class'::text as dimension, 1 as dimensions_filled, array['Equity']::text[] as target_values, 0.55::numeric as min_weight, 0.60::numeric as target_weight, 0.65::numeric as max_weight, null::text as note
+          union all select 't2'::text as target_id, 'asset_class'::text as dimension, 1 as dimensions_filled, array['Fixed income']::text[] as target_values, 0.25::numeric as min_weight, null::numeric as target_weight, 0.35::numeric as max_weight, null::text as note
+          union all select 't3'::text as target_id, 'region'::text as dimension, 1 as dimensions_filled, array['Emerging markets', 'China']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, 0.10::numeric as max_weight, null::text as note
+          union all select 't4'::text as target_id, 'region'::text as dimension, 1 as dimensions_filled, array['Any']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, 0.40::numeric as max_weight, null::text as note
+          union all select 't5'::text as target_id, 'region'::text as dimension, 1 as dimensions_filled, array['Global']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, null::numeric as max_weight, null::text as note
+          union all select 't6'::text as target_id, 'instrument'::text as dimension, 1 as dimensions_filled, array['Any']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, 0.50::numeric as max_weight, null::text as note
+          union all select 't7'::text as target_id, 'liquidity'::text as dimension, 1 as dimensions_filled, array['Immediate', 'Days']::text[] as target_values, 0.20::numeric as min_weight, null::numeric as target_weight, null::numeric as max_weight, null::text as note
+          union all select 't8'::text as target_id, 'platform'::text as dimension, 1 as dimensions_filled, array['Any']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, 0.70::numeric as max_weight, null::text as note
+          union all select 't9'::text as target_id, 'region'::text as dimension, 2 as dimensions_filled, array['Europe']::text[] as target_values, null::numeric as min_weight, null::numeric as target_weight, 0.01::numeric as max_weight, null::text as note
+    expect:
+      rows:
+        - {target_id: t1, label: Equity, status: Above maximum, amount_to_range: "-1000.00", amount_to_target: "-1500.00"}
+        - {target_id: t2, label: Fixed income, status: Within range, amount_to_range: "0.00", amount_to_target: "500.00"}
+        - {target_id: t3, label: "Emerging markets, China", status: Above maximum, amount_to_range: "-500.00", amount_to_target: null}
+        - {target_id: t4, label: Emerging markets, status: Within range, amount_to_range: "0.00", amount_to_target: null}
+        - {target_id: t4, label: Europe, status: Within range, amount_to_range: "0.00", amount_to_target: null}
+        - {target_id: t5, label: Global, status: Within range, amount_to_range: "0.00", amount_to_target: null}
+        - {target_id: t6, label: World ETF, status: Above maximum, amount_to_range: "-1000.00", amount_to_target: null}
+        - {target_id: t6, label: EM ETF, status: Within range, amount_to_range: "0.00", amount_to_target: null}
+        - {target_id: t6, label: Bond Fund, status: Within range, amount_to_range: "0.00", amount_to_target: null}
+        - {target_id: t7, label: "Immediate, Days", status: Within range, amount_to_range: "0.00", amount_to_target: null}
+        - {target_id: t8, label: Broker, status: Above maximum, amount_to_range: "-500.00", amount_to_target: null}
+        - {target_id: t8, label: Indexa Capital, status: Within range, amount_to_range: "0.00", amount_to_target: null}

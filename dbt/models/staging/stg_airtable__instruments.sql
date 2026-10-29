@@ -1,4 +1,4 @@
-with source as {{ latest_records(source('raw', 'airtable_instruments')) }}
+with source as {{ airtable_current(source('raw', 'airtable_instruments')) }}
 
 select
     record_key as airtable_record_id,
@@ -10,6 +10,8 @@ select
     coalesce(payload -> 'fields' ->> 'instrument_type', 'Unclassified') as instrument_type,
     coalesce(payload -> 'fields' ->> 'liquidity', 'Unclassified') as liquidity,
     coalesce(payload -> 'fields' ->> 'currency', 'EUR') as currency,
+    -- Yearly fee as a fraction: Airtable Percent fields arrive as 0.002 for 0.20%
+    (payload -> 'fields' ->> 'ter')::numeric as ter,
     -- Airtable leaves unchecked checkboxes out of the payload
     coalesce((payload -> 'fields' ->> 'is_benchmark')::boolean, false) as is_benchmark
 from source

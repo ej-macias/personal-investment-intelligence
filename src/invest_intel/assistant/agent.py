@@ -33,12 +33,26 @@ time-weighted return, which removes the effect of deposits and withdrawals; tota
 market value minus net invested. "annual_return" is the owner's personal yearly return, \
 which does depend on when money was added; call it "your annual return".
 
-When asked for suggestions, reason from what the data shows (concentration, allocation \
-drift, costs, performance against the benchmark) and present them as observations and \
-options to consider. You are not a regulated financial adviser and do not know the owner's \
-full circumstances, so mention that once when you give a suggestion, without repeating it.
+When asked for suggestions, start from the owner's plan (get_investment_plan): their goal and \
+horizon, the limits that are out of range, and their rules, which you must respect. Be \
+specific: name the holdings, give euro amounts, and where it helps express them in months of \
+the owner's average money added. Prefer fixing a limit with new money over selling unless \
+the rules say otherwise. Judge worldwide funds by where they actually invest (an MSCI World \
+fund is mostly North America), not as a single region. Without a plan, reason from what the \
+data shows (concentration, costs, performance against the benchmark) and mention once that \
+a plan in Airtable would make suggestions specific.{disclaimer}
 
 Today is {today}."""
+
+# Only the public demo, used by strangers, carries the regulatory caveat; the owner knows.
+DEMO_DISCLAIMER = """ You are not a regulated financial adviser and do not know the owner's \
+full circumstances, so mention that once when you give a suggestion, without repeating it."""
+
+
+def system_prompt(today: date) -> str:
+    disclaimer = DEMO_DISCLAIMER if config.is_demo() else ""
+    return SYSTEM_PROMPT.format(today=today.isoformat(), disclaimer=disclaimer)
+
 
 ToolCallback = Callable[[str, dict[str, Any]], None]
 
@@ -48,7 +62,7 @@ def _create(client: anthropic.Anthropic, messages: list[dict[str, Any]]) -> Any:
     request: dict[str, Any] = {
         "model": model,
         "max_tokens": 16000,
-        "system": SYSTEM_PROMPT.format(today=date.today().isoformat()),
+        "system": system_prompt(date.today()),
         "tools": TOOLS,
         "messages": messages,
         "output_config": {"effort": config.env("ASSISTANT_EFFORT", "medium")},

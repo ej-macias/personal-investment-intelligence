@@ -55,8 +55,9 @@ design decisions, the table catalogue and the security model are in
 - **Silver**: `stg_*` views that type and deduplicate each source, plus `int_prices_daily`,
   one price per instrument per calendar day.
 - **Gold**: `dim_instrument`, `fct_transactions`, `fct_positions_daily`, and the analytical
-  tables `portfolio_performance`, `investment_returns`, `asset_allocation` and
-  `benchmark_comparison`, `portfolio_monthly` and `portfolio_highlights`.
+  tables `portfolio_performance`, `investment_returns`, `asset_allocation`,
+  `benchmark_comparison`, `portfolio_monthly`, `portfolio_highlights`, and the owner's plan
+  checked against today in `investment_plan` and `target_checks`.
 
 Every model, column and test, with the lineage graph from source to dashboard, is browsable in
 the **[dbt docs site](https://ej-macias.github.io/personal-investment-intelligence/)**. It is
@@ -64,10 +65,10 @@ rebuilt on every change to `main` from synthetic data, never from a real databas
 
 ## The AI assistant
 
-The model has no database access and never writes SQL. It chooses among seven tools
+The model has no database access and never writes SQL. It chooses among eight tools
 (`get_portfolio_summary`, `get_portfolio_performance`, `get_asset_allocation`,
-`get_investment_returns`, `compare_with_benchmark`, `get_monthly_summary`,
-`get_transactions`), each backed by the
+`get_investment_returns`, `compare_with_benchmark`, `get_investment_plan`,
+`get_monthly_summary`, `get_transactions`), each backed by the
 same fixed queries the dashboards use, through a database role that can only read `gold`.
 In the private app, conversations are saved per user and can be reopened later; reopening one
 reads it from the database without calling the API.

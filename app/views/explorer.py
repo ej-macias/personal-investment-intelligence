@@ -19,6 +19,7 @@ st.dataframe(
             "market_value",
             "total_gain",
             "return_pct",
+            "yearly_fee",
         ]
     ],
     hide_index=True,
@@ -30,8 +31,14 @@ st.dataframe(
         "market_value": st.column_config.NumberColumn("Value", format="€%.0f"),
         "total_gain": st.column_config.NumberColumn("Gain", format="€%.0f"),
         "return_pct": st.column_config.NumberColumn("Return", format="percent"),
+        "yearly_fee": st.column_config.NumberColumn("Yearly fee", format="€%.0f"),
     },
 )
+if returns["yearly_fee"].notna().any():
+    st.caption(
+        f"Yearly fund fees: €{returns['yearly_fee'].sum():,.0f} at today's values, "
+        "for the funds whose fee (ter) is recorded in Airtable."
+    )
 
 names = returns.drop_duplicates("isin").set_index("isin")["instrument_name"].fillna("").to_dict()
 isin = st.selectbox("Instrument", list(names), format_func=lambda i: names[i] or i)

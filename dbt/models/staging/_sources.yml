@@ -21,6 +21,10 @@ sources:
         description: Instrument metadata and the ISIN to EODHD symbol mapping, maintained by hand.
       - name: airtable_transactions
         description: Manually tracked buys and sells outside Indexa.
+      - name: airtable_plan
+        description: The owner's plan (goal, horizon, rules), one row. Optional table.
+      - name: airtable_targets
+        description: The owner's limits as min / target / max ranges, one row per limit. Optional table.
       - name: eodhd_prices
         description: End-of-day prices, one record per symbol and date.
         freshness:
