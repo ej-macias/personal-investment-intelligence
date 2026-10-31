@@ -23,6 +23,11 @@ def _value_today(flows: Sequence[Flow], rate: float) -> float:
     return sum(amount / (1 + rate) ** ((day - start).days / 365) for day, amount in flows)
 
 
+def per_year(total_return: float, days: int) -> float:
+    """A return over `days` days as a yearly rate: 21% over two years is 10% per year."""
+    return (1 + total_return) ** (365 / days) - 1
+
+
 def annual_return(flows: Sequence[Flow]) -> float:
     """Yearly rate for dated flows: money put in negative, money taken out and today's value
     positive. Solved by halving the search interval, which always converges."""

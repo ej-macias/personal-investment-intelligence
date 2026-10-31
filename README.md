@@ -1,5 +1,16 @@
 # Personal Investment Intelligence
 
+[![CI](https://github.com/ej-macias/personal-investment-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/ej-macias/personal-investment-intelligence/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql&logoColor=white)
+![dbt](https://img.shields.io/badge/dbt-Core%20%2B%20MetricFlow-FF694B?logo=dbt&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-app-FF4B4B?logo=streamlit&logoColor=white)
+![Claude](https://img.shields.io/badge/Claude-tool%20calling-D97757?logo=anthropic&logoColor=white)
+![APIs](https://img.shields.io/badge/APIs-Indexa%20%C2%B7%20Airtable%20%C2%B7%20EODHD-555555)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI%20%2B%20schedules-2088FF?logo=githubactions&logoColor=white)
+[![dbt docs](https://img.shields.io/badge/dbt%20docs-lineage-FF694B?logo=dbt&logoColor=white)](https://ej-macias.github.io/personal-investment-intelligence/)
+![Built with Claude Code](https://img.shields.io/badge/Built%20with-Claude%20Code-D97757?logo=anthropic&logoColor=white)
+
 A personal investment analytics app. It consolidates investments held at Indexa Capital and
 elsewhere, models portfolio performance with dbt, and answers questions in plain language
 through an AI assistant that works from a fixed set of analytical tools.

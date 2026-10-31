@@ -59,3 +59,27 @@ def test_built_from_flows_and_todays_value(monkeypatch):
     ]
     monkeypatch.setattr(queries.db, "query", lambda sql, params=None: rows)
     assert queries.annual_return()["annual_return"] == pytest.approx(0.10, abs=1e-9)
+
+
+def test_per_year():
+    from invest_intel.analytics.returns import per_year
+
+    assert per_year(0.21, 730) == pytest.approx(0.10, abs=1e-3)
+    assert per_year(0.10, 365) == pytest.approx(0.10)
+
+
+def test_summary_gives_the_time_weighted_return_per_year(monkeypatch):
+    row = {
+        "date_day": date(2026, 1, 1),
+        "first_day": date(2024, 1, 2),
+        "market_value": 1.0,
+        "net_invested": 1.0,
+        "total_gain": 0.0,
+        "cumulative_twr": 0.21,
+    }
+    monkeypatch.setattr(queries.db, "query", lambda sql, params=None: [dict(row)])
+    summary = queries.portfolio_summary()
+    assert summary["twr_per_year"] == pytest.approx(0.10, abs=1e-3)
+
+    row["first_day"] = date(2025, 12, 1)  # a month: too short for a yearly figure
+    assert queries.portfolio_summary()["twr_per_year"] is None

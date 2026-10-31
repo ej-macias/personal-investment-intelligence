@@ -98,8 +98,9 @@ def _tool(name: str, description: str, properties: dict[str, Any] | None = None)
 TOOLS: list[dict[str, Any]] = [
     _tool(
         "get_portfolio_summary",
-        "Latest total market value, net invested amount, total gain and cumulative "
-        "time-weighted return. Start here for any question about how the portfolio stands today.",
+        "Latest total market value, net invested amount, total gain, and the time-weighted "
+        "return since the start (cumulative_twr) and per year (twr_per_year). Start here for "
+        "any question about how the portfolio stands today.",
     ),
     _tool(
         "get_portfolio_performance",
