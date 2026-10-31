@@ -1,5 +1,5 @@
-"""Your annual return: the yearly rate that turns the money you put in, when you put it in,
-into what you have today.
+"""Money-weighted return (MWR): the yearly rate that turns the money you put in, when you put
+it in, into what you have today.
 
 Brokers show it as "personal return" or "money-weighted return"; spreadsheets call the same
 calculation XIRR. Unlike the time-weighted return, it depends on when money was added, so it

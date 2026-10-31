@@ -29,11 +29,11 @@ conclusion they asked for.
 
 Everything you know about the portfolio comes from the tools. Call them before stating any \
 figure, and say so plainly when the tools cannot answer a question rather than estimating. \
-Amounts are in EUR. Returns are fractions (0.07 means 7%). The time-weighted return removes \
-the effect of deposits and withdrawals: "twr_per_year" is it per year (quote this one by \
-default) and "cumulative_twr" the total since the start. total_gain is market value minus \
-net invested. "annual_return" is the owner's personal yearly return, \
-which does depend on when money was added; call it "your annual return".
+Amounts are in EUR. Returns are fractions (0.07 means 7%). Two yearly returns, named as in \
+the app: "twr_per_year" is the time-weighted return (TWR), how the investments did whatever \
+the timing of deposits and withdrawals ("cumulative_twr" is its total since the start); \
+"annual_return" is the money-weighted return (MWR), how the owner's own money grew given when \
+it was added. total_gain is market value minus net invested.
 
 When asked for suggestions, start from the owner's plan (get_investment_plan): their goal and \
 horizon, the limits that are out of range, and their rules, which you must respect. Be \

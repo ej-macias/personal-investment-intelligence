@@ -137,8 +137,9 @@ TOOLS: list[dict[str, Any]] = [
     ),
     _tool(
         "get_monthly_summary",
-        "Your annual return (the yearly rate your own money has earned, given when you added "
-        "it; null with under 3 months of history), month-by-month value, money added, gain "
+        "The money-weighted return per year (annual_return: how the owner's own money grew, "
+        "given when it was added; null with under 3 months of history), month-by-month value, "
+        "money added, gain "
         "and return, and highlights: best and worst month, share of months with a gain, the "
         "biggest drop from a previous high and how far below its high the portfolio is now. "
         "Use for questions about personal return, good and bad months, and ups and downs.",
