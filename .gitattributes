@@ -1,0 +1,3 @@
+# GitHub's language bar hides SQL by default ("data" type); the dbt models are a large part of
+# this project, so count them.
+*.sql linguist-detectable=true

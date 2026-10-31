@@ -1,5 +1,5 @@
-"""Your annual return: the yearly rate that turns the money you put in, when you put it in,
-into what you have today.
+"""Money-weighted return (MWR): the yearly rate that turns the money you put in, when you put
+it in, into what you have today.
 
 Brokers show it as "personal return" or "money-weighted return"; spreadsheets call the same
 calculation XIRR. Unlike the time-weighted return, it depends on when money was added, so it
@@ -21,6 +21,11 @@ def _value_today(flows: Sequence[Flow], rate: float) -> float:
     """Every flow carried to the first date at `rate`; zero at the annual return."""
     start = flows[0][0]
     return sum(amount / (1 + rate) ** ((day - start).days / 365) for day, amount in flows)
+
+
+def per_year(total_return: float, days: int) -> float:
+    """A return over `days` days as a yearly rate: 21% over two years is 10% per year."""
+    return (1 + total_return) ** (365 / days) - 1
 
 
 def annual_return(flows: Sequence[Flow]) -> float:

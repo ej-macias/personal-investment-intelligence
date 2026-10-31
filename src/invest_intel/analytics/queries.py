@@ -12,6 +12,7 @@ from typing import Any
 
 from invest_intel import db
 from invest_intel.analytics.returns import annual_return as _annual_return
+from invest_intel.analytics.returns import per_year
 
 Rows = list[dict[str, Any]]
 
@@ -29,16 +30,27 @@ MIN_DAYS_FOR_ANNUAL_RETURN = 90
 
 
 def portfolio_summary() -> dict[str, Any]:
+    """Latest value, money invested and gain, and the time-weighted return both since the start
+    and per year (None while the history is shorter than MIN_DAYS_FOR_ANNUAL_RETURN)."""
     rows = db.query(
         """
         select date_day, market_value::float8, net_invested::float8, total_gain::float8,
-               cumulative_twr::float8
+               cumulative_twr::float8,
+               (select min(date_day) from gold.portfolio_performance) as first_day
         from gold.portfolio_performance
         order by date_day desc
         limit 1
         """
     )
-    return rows[0] if rows else {}
+    if not rows:
+        return {}
+    summary = rows[0]
+    days = (summary["date_day"] - summary["first_day"]).days
+    summary["history_days"] = days
+    summary["twr_per_year"] = (
+        per_year(summary["cumulative_twr"], days) if days >= MIN_DAYS_FOR_ANNUAL_RETURN else None
+    )
+    return summary
 
 
 def portfolio_performance(
