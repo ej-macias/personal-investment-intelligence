@@ -1,0 +1,51 @@
+name: Monthly insights
+
+# On the 1st of each month, after the daily pipeline, the assistant summarises the past month
+# of the private portfolio and the summary is emailed to the owner over SMTP.
+#
+# Credentials come from the `insights` GitHub environment. The log is public, so the script
+# prints only "sent" or an error type, never the summary, addresses or figures.
+on:
+  schedule:
+    - cron: "0 7 1 * *"
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "Month to summarise (YYYY-MM); empty for the previous month"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency: monthly-insights
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: insights
+    env:
+      APP_ENV: prod
+      PGHOST: ${{ secrets.PGHOST }}
+      PGDATABASE: ${{ secrets.PGDATABASE }}
+      PGUSER: ${{ secrets.PGUSER }}
+      PGPASSWORD: ${{ secrets.PGPASSWORD }}
+      PGSSLMODE: require
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ vars.SMTP_PORT || '465' }}
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      MAIL_TO: ${{ secrets.MAIL_TO }}
+      MONTH: ${{ inputs.month }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: pip install -e ".[insights]"
+      # The month comes from an environment variable, never interpolated into the command.
+      - run: python -m invest_intel.insights.monthly ${MONTH:+--month "$MONTH"}

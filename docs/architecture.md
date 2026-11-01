@@ -338,11 +338,17 @@ No secret is stored in the repository. Each one lives in exactly one of these pl
 | GitHub environment `demo` | Demo database credentials and the EODHD key (shared with `private`; it reads public prices only, so a leak costs quota, not data) | [demo.yml](../.github/workflows/demo.yml) |
 | Streamlit app secrets (private app) | Read-only database role, Anthropic key, Auth0 client, allowlist | The private app |
 | Streamlit app secrets (demo app) | Demo read-only role, Anthropic key | The public demo |
+| GitHub environment `insights` | Read-only role on the private database, Anthropic key, SMTP server, an app password limited to sending, and the owner's address | [monthly-insights.yml](../.github/workflows/monthly-insights.yml) |
 
 GitHub encrypts environment secrets, never shows them again after saving, masks them in logs
 and does not pass them to pull requests from forks. The workflows refer to them by name.
 
 ### Safeguards in the code
+
+- The monthly insights email logs only "sent" or an error type, never the summary, the
+  addresses or any figure. The summary goes only to Anthropic's API and the owner's own
+  mailbox. It is sent with an app password limited to SMTP: it can send mail, not read the
+  mailbox, and can be revoked on its own. It never runs on the demo.
 
 - `APP_ENV=demo` makes the ingestion refuse to run, and the synthetic generator (which
   truncates the raw tables) refuses to run anywhere else. With `--real-prices` it calls EODHD
@@ -387,6 +393,11 @@ and does not pass them to pull requests from forks. The workflows refer to them 
 6. **Streamlit**: the demo runs `app/streamlit_app.py`; the private app runs
    `app/private_app.py` (Community Cloud allows one app per repository, branch and file).
 7. **Anthropic**: set a monthly spend limit on the API key used by the demo.
+8. **Monthly email**: at your email provider, create an app password limited to sending
+   (SMTP). Create the GitHub environment `insights` (deployment branch `main`) with `PGHOST`,
+   `PGDATABASE`, `PGUSER` (`app_reader`), `PGPASSWORD`, `ANTHROPIC_API_KEY`, `SMTP_HOST`,
+   `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` and `MAIL_TO` (the last three your own address).
+   `SMTP_PORT` defaults to 465 (SSL); set it as a variable if your provider differs.
 
 ### Things to know
 
