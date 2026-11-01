@@ -94,6 +94,6 @@ costs low.
 ## What's next
 
 - **Crypto**, probably through the Kraken or Coinbase API.
-- **A weekly summary by email**, written by the assistant from the week's data.
+- **A monthly summary by email**, written by the assistant from the month's data.
 - **Documented, visual dbt lineage**, to find gaps and improve the quality and performance of
   the data models.

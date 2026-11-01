@@ -84,6 +84,10 @@ same fixed queries the dashboards use, through a database role that can only rea
 In the private app, conversations are saved per user and can be reopened later; reopening one
 reads it from the database without calling the API.
 
+On the 1st of each month it also writes a short summary of the past month (value, money added,
+MWR and TWR, limits out of range, a few observations), which a scheduled workflow emails to the
+owner ([src/invest_intel/insights/monthly.py](src/invest_intel/insights/monthly.py)).
+
 ## Run the demo locally
 
 Requires Python 3.11+ and a PostgreSQL database (Docker, or a free Neon project).
