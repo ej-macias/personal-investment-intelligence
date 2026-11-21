@@ -10,6 +10,7 @@ with holdings as (
         max(region) as region,
         max(instrument_type) as instrument_type,
         max(liquidity) as liquidity,
+        max(risk_level) as risk_level,
         sum(market_value) as market_value
     from {{ ref('investment_returns') }}
     where quantity > 0
@@ -25,6 +26,7 @@ select
     coalesce(region, 'Unclassified') as region,
     coalesce(instrument_type, 'Unclassified') as instrument_type,
     coalesce(liquidity, 'Unclassified') as liquidity,
+    risk_level,
     market_value,
     market_value / nullif(sum(market_value) over (), 0) as weight
 from holdings

@@ -65,6 +65,8 @@ Columns in every table: `id, run_id, loaded_at, entity, record_key, payload, pay
 | `portfolio_highlights` | one row | Best and worst month, share of months with a gain, biggest drop from a high |
 | `investment_plan` | one row | The owner's goal, horizon and rules, and money added per month on average |
 | `target_checks` | limit (and value, for Any limits) | Each limit from the targets table against today: status and euros to fix |
+| `portfolio_risk_daily` | day | Average risk weighted by money, and how much of the value is rated |
+| `portfolio_risk` | one row | Today's average risk against the owner's range and goal |
 
 Candidates for later: `fct_cash_flows` (deposits, withdrawals, fees), `portfolio_performance_monthly`,
 `allocation_drift` against target weights, and a money-weighted return per account.
@@ -76,6 +78,9 @@ Candidates for later: `fct_cash_flows` (deposits, withdrawals, fees), `portfolio
 - Positions with no price yet are valued at cost and flagged `is_price_estimated`. When the
   first real price arrives, the difference shows up as that day's return.
 - Prices use the unadjusted close. Dividends paid in cash are not modelled yet.
+- **Average risk** is weighted by money: sum of value × risk, divided by the value of the rated
+  holdings. €7,000 at risk 3 and €3,000 at risk 6 average 3.9. Unrated holdings are left out and
+  the share of the value that is rated is shown. Past days use today's ratings.
 
 ## Airtable base
 
@@ -112,6 +117,7 @@ price. Rows without an `isin` are ignored.
 | `currency` | Single line text | No | Currency of the listing you trade, not the fund's base currency (an ETF with "USD" in its name bought on Xetra trades in EUR). Only EUR is supported for now, which is also the default, so it can be left empty. | `EUR` |
 | `is_benchmark` | Checkbox | No | Tick on the one instrument you compare the portfolio against. It is priced but never counted as a holding. See [Choosing a benchmark](#choosing-a-benchmark). | ☐ |
 | `ter` | Percent | No | The fund's yearly fee (TER), from its factsheet or justETF. Shown as a yearly cost in euros and used by the assistant. Empty for shares and anything without a fee. | `0.20%` |
+| `risk` | Number or single select | Recommended | Your risk rating from 1 (lowest) to 7 (highest). Used for the portfolio's average risk. Empty or any other value counts as unrated. | `4` |
 
 `instrument_type` values:
 
@@ -175,8 +181,11 @@ One row, edited when the plan changes. The assistant reads it before making any 
 | `goal` | Single line or long text (primary field) | What the money is for. | Retirement savings, plus a flat deposit in about 8 years |
 | `horizon_year` | Number | The year the money is expected to be needed. | `2050` |
 | `rules` | Long text | Your own investing rules, one instruction per line, for things a range cannot express. The assistant respects them in every suggestion. | Invest new money before selling anything. |
+| `risk_min` | Number | Lowest accepted average risk, from 1 to 7. | `3` |
+| `risk_target` | Number | The average risk you aim for. With a range and no target, the middle of the range. | `4` |
+| `risk_max` | Number | Highest accepted average risk, from 1 to 7. | `5` |
 
-Numeric limits belong in `targets`, where they are checked exactly. Contributions are not
+Limits on shares of the portfolio belong in `targets`, where they are checked exactly. Contributions are not
 entered: the assistant uses the money actually added per month over the last year.
 
 ### `targets`: your limits (optional)

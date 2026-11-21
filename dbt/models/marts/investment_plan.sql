@@ -20,5 +20,8 @@ select
     p.goal,
     p.horizon_year,
     p.rules,
+    p.risk_min,
+    p.risk_target,
+    p.risk_max,
     (select round(avg(money_added), 2) from recent_months) as avg_money_added_12m
 from plan as p

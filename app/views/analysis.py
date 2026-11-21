@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 
 import data
+import risk_charts
 
 st.title("Portfolio analysis")
 
@@ -100,6 +101,56 @@ if plan or not checks.empty:
                 "To fix": st.column_config.TextColumn(width="medium"),
             },
         )
+
+st.subheader("Risk")
+risk = data.risk()
+if risk.get("avg_risk") is None:
+    st.info("No risk ratings yet. Fill the risk field (1 to 7) of your assets in Airtable.")
+else:
+    left, right = st.columns(2)
+    left.metric("Average risk", f"{risk['avg_risk']:.2f} / 7")
+    if risk.get("status"):
+        right.metric("Status", risk["status"])
+    st.altair_chart(risk_charts.gauge(risk))
+    if risk.get("risk_min") is not None and risk.get("risk_max") is not None:
+        st.caption(
+            f"Shaded: your range, {risk['risk_min']:g} to {risk['risk_max']:g}. "
+            f"Gray mark: your goal, {risk['risk_target']:g}. Each holding counts by its money."
+        )
+    else:
+        st.caption("Each holding counts by its money. Add risk_min and risk_max to your plan.")
+    if risk["rated_share"] < 1:
+        st.warning(f"{1 - risk['rated_share']:.0%} of the value has no rating and is left out.")
+
+    st.markdown("**Money by risk level**")
+    st.altair_chart(risk_charts.by_level(data.allocation("risk_level")))
+
+    history = data.risk_history()
+    if len(history) > 1:
+        st.markdown("**Average risk over time**")
+        st.altair_chart(risk_charts.over_time(history, risk))
+        st.caption("Past months use today's risk ratings.")
+
+    st.markdown("**What drives the risk**")
+    holdings = data.risk_by_holding()
+    st.dataframe(
+        pd.DataFrame(
+            {
+                "Holding": holdings["instrument_name"],
+                "Risk": holdings["risk_level"],
+                "Share": holdings["weight"] * 100,
+                "Adds": holdings["risk_points"],
+            }
+        ),
+        hide_index=True,
+        column_config={
+            "Holding": st.column_config.TextColumn(width=170),
+            "Risk": st.column_config.NumberColumn(format="%d", width=48),
+            "Share": st.column_config.NumberColumn(format="%.0f%%", width=62),
+            "Adds": st.column_config.NumberColumn(format="%.2f", width=58),
+        },
+    )
+    st.caption("Adds: the points each holding adds to the average risk. They sum to the average.")
 
 st.subheader("Month by month")
 monthly = data.monthly()

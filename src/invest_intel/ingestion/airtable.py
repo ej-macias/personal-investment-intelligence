@@ -2,9 +2,9 @@
 
 Expected fields (see docs/architecture.md, Airtable base):
   instruments:  isin, name, eodhd_symbol, asset_class, region, instrument_type, liquidity,
-                currency, is_benchmark, ter
+                currency, is_benchmark, ter, risk
   transactions: date, isin, type (buy/sell), quantity, price, fees, account
-  plan:         goal, horizon_year, rules                                       (optional table)
+  plan:         goal, horizon_year, rules, risk_min, risk_target, risk_max      (optional table)
   targets:      one of asset_classes, regions, instrument_types, liquidity, platforms,
                 instruments, each_instrument; min, target, max, note           (optional table)
 

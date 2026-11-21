@@ -140,6 +140,9 @@ PLAN = {
     "rules": (
         "Invest new money before selling anything.\nPrefer funds with yearly fees under 0.30%."
     ),
+    "risk_min": 3,
+    "risk_target": 4,
+    "risk_max": 5,
 }
 TARGETS = [
     {"asset_classes": ["Equity"], "min": 0.60, "target": 0.70, "max": 0.80},
@@ -161,6 +164,17 @@ TARGETS = [
 ]
 # Every demo instrument trades on an exchange, so all are Immediate; anything not listed is an ETF.
 INSTRUMENT_TYPES = {"4GLD.XETRA": "ETC", "SAP.XETRA": "Share"}
+# Fictional risk ratings from 1 to 7, as an owner would enter them in Airtable.
+RISK_LEVELS = {
+    "EUNL.XETRA": 4,
+    "IS3N.XETRA": 5,
+    "EUNH.XETRA": 2,
+    "IUSN.XETRA": 5,
+    "QDVE.XETRA": 6,
+    "4GLD.XETRA": 4,
+    "SAP.XETRA": 6,
+    "V80A.XETRA": 4,
+}
 
 
 def _business_days(start: date, end: date) -> list[date]:
@@ -247,6 +261,7 @@ def generate(
             "instrument_type": INSTRUMENT_TYPES.get(symbol, "ETF"),
             "liquidity": "Immediate",
             "currency": "EUR",
+            "risk": RISK_LEVELS[symbol],
         }
         if symbol in FEES:
             fields["ter"] = FEES[symbol]

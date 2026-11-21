@@ -105,6 +105,13 @@ models:
         data_tests: [not_null]
       - name: ter
         description: The fund's yearly fee as a fraction (0.002 for 0.20%). Empty when not recorded.
+      - name: risk_level
+        description: The owner's risk rating from 1 to 7. Empty when missing or not a valid rating.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5, 6, 7]
+                quote: false
 
   - name: stg_airtable__plan
     description: The owner's plan from Airtable (normally one row).
@@ -118,6 +125,12 @@ models:
         description: The year the money is expected to be needed.
       - name: rules
         description: The owner's own investing rules, one per line, as written.
+      - name: risk_min
+        description: Lowest accepted average risk, on the 1 to 7 scale.
+      - name: risk_target
+        description: The average risk the owner aims for.
+      - name: risk_max
+        description: Highest accepted average risk.
       - name: loaded_at
         description: When this version of the row was loaded.
 
