@@ -23,6 +23,7 @@ ALLOCATION_DIMENSIONS = {
     "liquidity": "liquidity",
     "platform": "platform",
     "instrument": "instrument_name",
+    "risk_level": "coalesce(risk_level::text, 'Unrated')",
 }
 FREQUENCIES = ("daily", "monthly")
 # Below this much history a yearly rate swings too much to be meaningful.
@@ -97,9 +98,9 @@ def investment_returns() -> Rows:
     """Per-instrument quantity, cost, value and gain as of the latest day."""
     return db.query(
         """
-        select isin, instrument_name, asset_class, instrument_type, platform, account_id,
-               quantity::float8, net_invested::float8, market_value::float8, total_gain::float8,
-               return_pct::float8, yearly_fee::float8
+        select isin, instrument_name, asset_class, instrument_type, risk_level, platform,
+               account_id, quantity::float8, net_invested::float8, market_value::float8,
+               total_gain::float8, return_pct::float8, yearly_fee::float8
         from gold.investment_returns
         order by market_value desc
         """
@@ -244,5 +245,47 @@ def target_checks() -> Rows:
                note
         from gold.target_checks
         order by dimension, applies_to_each, label
+        """
+    )
+
+
+def portfolio_risk() -> dict[str, Any]:
+    """Today's average risk, weighted by money, against the owner's range and goal."""
+    rows = db.query(
+        """
+        select date_day, market_value::float8, rated_value::float8, rated_share::float8,
+               avg_risk::float8, risk_min::float8, risk_target::float8, risk_max::float8,
+               status, points_to_range::float8, points_to_target::float8
+        from gold.portfolio_risk
+        """
+    )
+    return rows[0] if rows else {}
+
+
+def risk_history() -> Rows:
+    """Average risk at each month end, using today's ratings."""
+    return db.query(
+        """
+        select distinct on (date_trunc('month', date_day)) date_day, avg_risk::float8,
+               rated_share::float8
+        from gold.portfolio_risk_daily
+        where avg_risk is not null
+        order by date_trunc('month', date_day), date_day desc
+        """
+    )
+
+
+def risk_by_holding() -> Rows:
+    """Each holding's risk, share of the portfolio and points it adds to the average."""
+    return db.query(
+        """
+        select instrument_name, max(risk_level) as risk_level,
+               sum(market_value)::float8 as market_value, sum(weight)::float8 as weight,
+               (sum(market_value * risk_level)
+                   / nullif(sum(sum(market_value) filter (where risk_level is not null)) over (), 0)
+               )::float8 as risk_points
+        from gold.asset_allocation
+        group by isin, instrument_name
+        order by risk_points desc nulls last, market_value desc
         """
     )

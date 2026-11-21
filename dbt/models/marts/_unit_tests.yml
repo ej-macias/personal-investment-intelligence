@@ -134,6 +134,127 @@ unit_tests:
       rows:
         - {plan_id: recNEW, goal: Current plan, horizon_year: 2050}
 
+  - name: invalid_risk_ratings_are_left_empty
+    model: stg_airtable__instruments
+    description: A rating from 1 to 7 is kept, as a number or as text; anything else is empty.
+    given:
+      - input: source('raw', 'airtable_instruments')
+        rows:
+          - {id: 1, entity: Assets, record_key: rec1, loaded_at: "2026-01-01 05:00:00", payload: '{"fields": {"isin": "A", "risk": 4}}'}
+          - {id: 2, entity: Assets, record_key: rec2, loaded_at: "2026-01-01 05:00:00", payload: '{"fields": {"isin": "B", "risk": "7"}}'}
+          - {id: 3, entity: Assets, record_key: rec3, loaded_at: "2026-01-01 05:00:00", payload: '{"fields": {"isin": "C", "risk": 8}}'}
+          - {id: 4, entity: Assets, record_key: rec4, loaded_at: "2026-01-01 05:00:00", payload: '{"fields": {"isin": "D", "risk": "high"}}'}
+          - {id: 5, entity: Assets, record_key: rec5, loaded_at: "2026-01-01 05:00:00", payload: '{"fields": {"isin": "E"}}'}
+    expect:
+      rows:
+        - {isin: A, risk_level: 4}
+        - {isin: B, risk_level: 7}
+        - {isin: C, risk_level: null}
+        - {isin: D, risk_level: null}
+        - {isin: E, risk_level: null}
+
+  - name: average_risk_is_weighted_by_money
+    model: portfolio_risk_daily
+    description: >
+      7,000 at risk 3 and 3,000 at risk 6 average 3.9, not 4.5. An unrated holding is left out of
+      the average but lowers the rated share, and a closed position does not count.
+    given:
+      - input: ref('fct_positions_daily')
+        rows:
+          - {date_day: 2026-03-01, isin: A, quantity: 70, market_value: 7000}
+          - {date_day: 2026-03-01, isin: B, quantity: 30, market_value: 3000}
+          - {date_day: 2026-03-01, isin: C, quantity: 25, market_value: 2500}
+          - {date_day: 2026-03-01, isin: D, quantity: 0, market_value: 0}
+      - input: ref('dim_instrument')
+        rows:
+          - {isin: A, risk_level: 3}
+          - {isin: B, risk_level: 6}
+          - {isin: C, risk_level: null}
+          - {isin: D, risk_level: 7}
+    expect:
+      rows:
+        - {date_day: 2026-03-01, market_value: 12500, rated_value: 10000, rated_share: "0.80000000000000000000", avg_risk: "3.9000000000000000"}
+
+  - name: risk_within_range
+    model: portfolio_risk
+    given:
+      - input: ref('portfolio_risk_daily')
+        rows:
+          - {date_day: 2026-03-01, avg_risk: 4.5}
+      - input: ref('investment_plan')
+        rows:
+          - {risk_min: 3, risk_target: 4, risk_max: 5}
+    expect:
+      rows:
+        - {status: Within range, points_to_range: 0, points_to_target: -0.5}
+
+  - name: risk_slightly_above_range_needs_no_action
+    model: portfolio_risk
+    given:
+      - input: ref('portfolio_risk_daily')
+        rows:
+          - {date_day: 2026-03-01, avg_risk: 5.1}
+      - input: ref('investment_plan')
+        rows:
+          - {risk_min: 3, risk_target: 4, risk_max: 5}
+    expect:
+      rows:
+        - {status: Slightly above maximum, points_to_range: -0.1, points_to_target: -1.1}
+
+  - name: risk_above_range
+    model: portfolio_risk
+    given:
+      - input: ref('portfolio_risk_daily')
+        rows:
+          - {date_day: 2026-03-01, avg_risk: 5.2}
+      - input: ref('investment_plan')
+        rows:
+          - {risk_min: 3, risk_target: 4, risk_max: 5}
+    expect:
+      rows:
+        - {status: Above maximum, points_to_range: -0.2, points_to_target: -1.2}
+
+  - name: risk_slightly_below_range_needs_no_action
+    model: portfolio_risk
+    given:
+      - input: ref('portfolio_risk_daily')
+        rows:
+          - {date_day: 2026-03-01, avg_risk: 2.9}
+      - input: ref('investment_plan')
+        rows:
+          - {risk_min: 3, risk_target: 4, risk_max: 5}
+    expect:
+      rows:
+        - {status: Slightly below minimum, points_to_range: 0.1, points_to_target: 1.1}
+
+  - name: risk_below_range
+    model: portfolio_risk
+    given:
+      - input: ref('portfolio_risk_daily')
+        rows:
+          - {date_day: 2026-03-01, avg_risk: 2.5}
+      - input: ref('investment_plan')
+        rows:
+          - {risk_min: 3, risk_target: 4, risk_max: 5}
+    expect:
+      rows:
+        - {status: Below minimum, points_to_range: 0.5, points_to_target: 1.5}
+
+  - name: risk_without_a_plan_has_no_status
+    model: portfolio_risk
+    given:
+      - input: ref('portfolio_risk_daily')
+        rows:
+          - {date_day: 2026-03-01, avg_risk: 4.5}
+      - input: ref('investment_plan')
+        format: sql
+        rows: |
+          select null::numeric as risk_min, null::numeric as risk_target, null::numeric as risk_max
+          where false
+    expect:
+      rows:
+        - {date_day: 2026-03-01, status: null, risk_target: null}
+
   - name: limits_are_checked_against_todays_shares
     model: target_checks
     description: >

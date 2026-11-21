@@ -70,3 +70,18 @@ def plan() -> dict:
 @st.cache_data(ttl=TTL)
 def target_checks() -> pd.DataFrame:
     return pd.DataFrame(queries.target_checks())
+
+
+@st.cache_data(ttl=TTL)
+def risk() -> dict:
+    return queries.portfolio_risk()
+
+
+@st.cache_data(ttl=TTL)
+def risk_history() -> pd.DataFrame:
+    return pd.DataFrame(queries.risk_history())
+
+
+@st.cache_data(ttl=TTL)
+def risk_by_holding() -> pd.DataFrame:
+    return pd.DataFrame(queries.risk_by_holding())

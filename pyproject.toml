@@ -7,7 +7,8 @@ dependencies = [
     "httpx>=0.27",
     "psycopg[binary]>=3.2",
     "pandas>=2.2",
-    "streamlit>=1.42",
+    "streamlit>=1.67",
+    "altair>=5",
     "Authlib>=1.3.2",
     "anthropic",
 ]

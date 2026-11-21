@@ -9,3 +9,9 @@ def test_disclaimer_only_in_the_demo(monkeypatch):
     monkeypatch.setenv("APP_ENV", "prod")
     prompt = agent.system_prompt(date(2026, 1, 1))
     assert "regulated financial adviser" not in prompt and "2026-01-01" in prompt
+
+
+def test_prompt_makes_suggestions_respect_the_risk_range(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "prod")
+    prompt = agent.system_prompt(date(2026, 1, 1))
+    assert "weighted by money" in prompt and "before and after" in prompt

@@ -86,6 +86,9 @@ models:
       - name: yearly_fee_pct
         description: The fund's yearly fee (TER) as a fraction, 0.002 for 0.20%. Empty when not recorded.
         data_type: numeric
+      - name: risk_level
+        description: The owner's risk rating, from 1 (lowest) to 7 (highest). Empty when not rated.
+        data_type: integer
 
   - name: fct_transactions
     description: One row per buy or sell, from Indexa and from Airtable, in one shape.
@@ -280,6 +283,9 @@ models:
       - name: liquidity
         description: From dim_instrument.
         data_type: text
+      - name: risk_level
+        description: From dim_instrument; empty when not rated.
+        data_type: integer
       - name: first_trade_date
         description: Day of the first trade in this account and instrument.
         data_type: date
@@ -366,6 +372,9 @@ models:
               arguments:
                 values: *liquidity_levels
               config: {severity: warn}
+      - name: risk_level
+        description: From dim_instrument; empty when not rated.
+        data_type: integer
       - name: market_value
         description: Value today, in EUR.
         data_type: numeric
@@ -518,8 +527,87 @@ models:
       - name: rules
         description: The owner's own investing rules, one per line.
         data_type: text
+      - name: risk_min
+        description: Lowest accepted average risk, on the 1 to 7 scale.
+        data_type: numeric
+      - name: risk_target
+        description: The average risk the owner aims for.
+        data_type: numeric
+      - name: risk_max
+        description: Highest accepted average risk.
+        data_type: numeric
       - name: avg_money_added_12m
         description: Average money put in minus taken out per month, last 12 complete months.
+        data_type: numeric
+
+  - name: portfolio_risk_daily
+    description: >
+      The portfolio's average risk per day, weighted by money. Holdings without a rating are left
+      out of the average. Past days use today's ratings.
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: date_day
+        description: The day.
+        data_type: date
+        constraints: [{type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: market_value
+        description: Value of everything held, in EUR.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: rated_value
+        description: Value of the holdings that have a risk rating, in EUR.
+        data_type: numeric
+        data_tests: [not_null]
+      - name: rated_share
+        description: Share of the portfolio's value that has a rating. 1 means all of it.
+        data_type: numeric
+      - name: avg_risk
+        description: Sum of value times risk, divided by the value of the rated holdings.
+        data_type: numeric
+
+  - name: portfolio_risk
+    description: >
+      Today's average risk against the owner's range and goal, in one row. The limits and status
+      are empty without a plan.
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: date_day
+        description: The latest day.
+        data_type: date
+        constraints: [{type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: market_value
+        description: Value of everything held, in EUR.
+        data_type: numeric
+      - name: rated_value
+        description: Value of the holdings that have a risk rating, in EUR.
+        data_type: numeric
+      - name: rated_share
+        description: Share of the portfolio's value that has a rating. 1 means all of it.
+        data_type: numeric
+      - name: avg_risk
+        description: Average risk weighted by money, on the 1 to 7 scale.
+        data_type: numeric
+      - name: risk_min
+        description: Lowest accepted average risk.
+        data_type: numeric
+      - name: risk_target
+        description: The goal; the middle of the range when no target is set.
+        data_type: numeric
+      - name: risk_max
+        description: Highest accepted average risk.
+        data_type: numeric
+      - name: status
+        description: Where the average stands against the range. "Slightly" means within 0.1 points.
+        data_type: text
+      - name: points_to_range
+        description: Risk points to get back in range, negative to lower it. 0 when within range.
+        data_type: numeric
+      - name: points_to_target
+        description: Risk points to reach the goal, negative to lower it.
         data_type: numeric
 
   - name: target_checks

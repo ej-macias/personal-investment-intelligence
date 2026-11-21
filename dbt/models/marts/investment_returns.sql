@@ -28,6 +28,7 @@ select
     i.region,
     i.instrument_type,
     i.liquidity,
+    i.risk_level,
     b.first_trade_date,
     l.quantity,
     l.net_invested,

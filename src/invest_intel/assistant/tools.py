@@ -14,6 +14,7 @@ from datetime import date
 from typing import Any
 
 from invest_intel.analytics import queries
+from invest_intel.analytics.risk import fix_amounts
 
 # Never sent to the API: for Indexa the account id is the account number. The dashboards still
 # show it, since they read the same queries directly.
@@ -69,13 +70,39 @@ def _get_monthly_summary(_: dict[str, Any]) -> Any:
     }
 
 
+def _risk(holdings: list[dict[str, Any]]) -> dict[str, Any] | None:
+    row = queries.portfolio_risk()
+    if not row or row.get("avg_risk") is None:
+        return None
+    unrated = sorted(
+        {
+            r.get("instrument_name") or r["isin"]
+            for r in holdings
+            if (r.get("quantity") or 0) > 0 and r.get("risk_level") is None
+        }
+    )
+    return {
+        "average": round(row["avg_risk"], 2),
+        "min": row["risk_min"],
+        "target": row["risk_target"],
+        "max": row["risk_max"],
+        "status": row["status"],
+        "rated_value": row["rated_value"],
+        "rated_share": round(row["rated_share"], 4),
+        "unrated_holdings": unrated,
+        "euros_to_fix": fix_amounts(row),
+    }
+
+
 def _get_investment_plan(_: dict[str, Any]) -> Any:
     plan = queries.investment_plan()
     checks = queries.target_checks()
-    fees = [r["yearly_fee"] for r in queries.investment_returns() if r.get("yearly_fee")]
+    holdings = queries.investment_returns()
+    fees = [r["yearly_fee"] for r in holdings if r.get("yearly_fee")]
     return {
         "plan": plan or None,
         "target_checks": checks,
+        "risk": _risk(holdings),
         "total_yearly_fees": round(sum(fees), 2) if fees else None,
         "note": None
         if plan or checks
@@ -117,8 +144,9 @@ TOOLS: list[dict[str, Any]] = [
     ),
     _tool(
         "get_investment_returns",
-        "One row per holding with quantity, net invested, market value, gain and return. "
-        "Use to find best and worst performers or to look up an instrument's ISIN.",
+        "One row per holding with quantity, net invested, market value, gain, return and the "
+        "owner's risk rating (risk_level, 1 to 7, null if unrated). Use to find best and worst "
+        "performers, to see which holdings raise or lower the risk, or to look up an ISIN.",
     ),
     _tool(
         "compare_with_benchmark",
@@ -132,8 +160,12 @@ TOOLS: list[dict[str, Any]] = [
         "month over the last year, and each of their limits (min / target / max share of the "
         "portfolio by asset class, region, type, liquidity, platform or holding) checked "
         "against today: status, and euros to add or reduce to get within range and to reach "
-        "the target. Also the total yearly fund fees in EUR. Call this first for any request "
-        "for suggestions, rebalancing, where to put new money, risk or costs.",
+        "the target. Also the total yearly fund fees in EUR, and `risk`: the portfolio's average "
+        "risk from 1 to 7 weighted by money, its accepted range and target, status, the share "
+        "of the value that is rated, and euros_to_fix: to_range and to_target, each with "
+        "new_money_by_risk_level (euros to add at that risk level) and switch_by_risk_gap (euros "
+        "to move between two holdings whose risk levels differ by that many). Call this first "
+        "for any request for suggestions, rebalancing, where to put new money, risk or costs.",
     ),
     _tool(
         "get_monthly_summary",

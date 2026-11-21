@@ -42,8 +42,8 @@ get_portfolio_summary and get_monthly_summary, and how the month compares with t
 from compare_with_benchmark starting {first}.
 
 ## My plan
-Only the limits that are clearly out of range (ignore the "Slightly" ones), from \
-get_investment_plan, with the amount to fix each.
+My average risk against its range and target, from get_investment_plan, then only the limits \
+that are clearly out of range (ignore the "Slightly" ones), with the amount to fix each.
 
 ## Worth a look
 Two or three short observations that respect my plan's rules.

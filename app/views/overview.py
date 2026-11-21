@@ -13,6 +13,14 @@ left, right = st.columns(2)
 left.metric("Market value", f"€{summary['market_value']:,.0f}")
 right.metric("Total gain", f"€{summary['total_gain']:,.0f}")
 left.metric("Net invested", f"€{summary['net_invested']:,.0f}")
+risk = data.risk()
+if risk.get("avg_risk") is not None:
+    risk_help = "Each holding's risk from 1 to 7, counted by how much money is in it."
+    if risk.get("status"):
+        risk_help += f" Status: {risk['status']}."
+    if risk["rated_share"] < 1:
+        risk_help += f" {1 - risk['rated_share']:.0%} of the value has no rating and is left out."
+    right.metric("Average risk", f"{risk['avg_risk']:.2f} / 7", help=risk_help)
 MWR_HELP = (
     "How much your own money has grown per year. It takes into account when and how much you "
     "put in: money added just before prices rise helps, money added just before a fall hurts. "
