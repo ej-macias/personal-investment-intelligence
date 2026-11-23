@@ -1,5 +1,6 @@
 import streamlit as st
 
+import chart_colors
 import data
 
 st.title("Portfolio overview")
@@ -58,7 +59,12 @@ if summary.get("twr_per_year") is not None and summary["history_days"] < 365:
 st.subheader("Value vs. money invested")
 performance = data.performance()
 st.line_chart(
-    performance, x="date_day", y=["market_value", "net_invested"], x_label="", y_label="EUR"
+    performance,
+    x="date_day",
+    y=["market_value", "net_invested"],
+    color=chart_colors.two_lines(),
+    x_label="",
+    y_label="EUR",
 )
 
 st.subheader("Asset allocation")

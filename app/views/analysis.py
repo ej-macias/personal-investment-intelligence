@@ -3,6 +3,8 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 
+import allocation_chart
+import chart_colors
 import data
 import risk_charts
 
@@ -26,6 +28,7 @@ else:
         benchmark,
         x="date_day",
         y=["portfolio_return", "benchmark_return"],
+        color=chart_colors.two_lines(),
         x_label="",
         y_label="Return",
     )
@@ -196,9 +199,10 @@ dimension = (
     or "region"
 )
 allocation = data.allocation(dimension)
-st.bar_chart(
-    allocation, x="label", y="weight", horizontal=True, x_label="Share of portfolio", y_label=""
-)
+if allocation.empty:
+    st.info("No allocation data yet.")
+else:
+    st.altair_chart(allocation_chart.allocation_pie(allocation, chart_colors.theme()))
 
 st.subheader("Gain by instrument")
 st.bar_chart(
